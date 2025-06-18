@@ -6,6 +6,13 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		1333D5612DFF5A4500939EA5 /* SwiftProtobuf in Frameworks */ = {isa = PBXBuildFile; productRef = 1333D5602DFF5A4500939EA5 /* SwiftProtobuf */; };
+		1333D5632DFF5A4500939EA5 /* SwiftProtobufPluginLibrary in Frameworks */ = {isa = PBXBuildFile; productRef = 1333D5622DFF5A4500939EA5 /* SwiftProtobufPluginLibrary */; };
+		1333D5652DFF5A4500939EA5 /* protoc-gen-swift in Frameworks */ = {isa = PBXBuildFile; productRef = 1333D5642DFF5A4500939EA5 /* protoc-gen-swift */; };
+		13EFFEF22E01F9930085EA36 /* GoogleMaps in Frameworks */ = {isa = PBXBuildFile; productRef = 13EFFEF12E01F9930085EA36 /* GoogleMaps */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		1333D5302DFF2F0800939EA5 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -52,6 +59,10 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				13EFFEF22E01F9930085EA36 /* GoogleMaps in Frameworks */,
+				1333D5632DFF5A4500939EA5 /* SwiftProtobufPluginLibrary in Frameworks */,
+				1333D5612DFF5A4500939EA5 /* SwiftProtobuf in Frameworks */,
+				1333D5652DFF5A4500939EA5 /* protoc-gen-swift in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +123,10 @@
 			);
 			name = WhichWay;
 			packageProductDependencies = (
+				1333D5602DFF5A4500939EA5 /* SwiftProtobuf */,
+				1333D5622DFF5A4500939EA5 /* SwiftProtobufPluginLibrary */,
+				1333D5642DFF5A4500939EA5 /* protoc-gen-swift */,
+				13EFFEF12E01F9930085EA36 /* GoogleMaps */,
 			);
 			productName = WhichWay;
 			productReference = 1333D5212DFF2F0600939EA5 /* WhichWay.app */;
@@ -195,6 +210,10 @@
 			);
 			mainGroup = 1333D5182DFF2F0600939EA5;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				1333D54F2DFF40B600939EA5 /* XCRemoteSwiftPackageReference "swift-protobuf" */,
+				13EFFEF02E01F9930085EA36 /* XCRemoteSwiftPackageReference "ios-maps-sdk" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 1333D5222DFF2F0600939EA5 /* Products */;
 			projectDirPath = "";
@@ -327,7 +346,7 @@
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				SDKROOT = macosx;
+				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -384,7 +403,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 15.5;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
-				SDKROOT = macosx;
+				SDKROOT = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
 			};
 			name = Release;
@@ -403,6 +422,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -411,8 +432,11 @@
 				PRODUCT_BUNDLE_IDENTIFIER = dev.jandy.WhichWay;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
+				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
@@ -433,6 +457,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -441,8 +467,11 @@
 				PRODUCT_BUNDLE_IDENTIFIER = dev.jandy.WhichWay;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
+				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
@@ -557,6 +586,48 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		1333D54F2DFF40B600939EA5 /* XCRemoteSwiftPackageReference "swift-protobuf" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-protobuf.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.30.0;
+			};
+		};
+		13EFFEF02E01F9930085EA36 /* XCRemoteSwiftPackageReference "ios-maps-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/googlemaps/ios-maps-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 10.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		1333D5602DFF5A4500939EA5 /* SwiftProtobuf */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1333D54F2DFF40B600939EA5 /* XCRemoteSwiftPackageReference "swift-protobuf" */;
+			productName = SwiftProtobuf;
+		};
+		1333D5622DFF5A4500939EA5 /* SwiftProtobufPluginLibrary */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1333D54F2DFF40B600939EA5 /* XCRemoteSwiftPackageReference "swift-protobuf" */;
+			productName = SwiftProtobufPluginLibrary;
+		};
+		1333D5642DFF5A4500939EA5 /* protoc-gen-swift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1333D54F2DFF40B600939EA5 /* XCRemoteSwiftPackageReference "swift-protobuf" */;
+			productName = "protoc-gen-swift";
+		};
+		13EFFEF12E01F9930085EA36 /* GoogleMaps */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 13EFFEF02E01F9930085EA36 /* XCRemoteSwiftPackageReference "ios-maps-sdk" */;
+			productName = GoogleMaps;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 1333D5192DFF2F0600939EA5 /* Project object */;
 }
