@@ -3,3 +3,5 @@
 *.xcworkspacedata
 *.xcbkptlist
 *.plist
+WhichWay/keys.plist
+*.plist
