@@ -6,65 +6,41 @@
 //
 
 import SwiftUI
-import GoogleMaps
+import MapKit
+import SwiftData
 
-struct MapView: UIViewRepresentable {
-    @Binding var markers: [GMSMarker]
-    @Binding var selectedMarker: GMSMarker?
+struct MapView: View {
+    @Environment(\.modelContext) var context
+    @Query private var stations: [SubwayStation]
     
-    var onAnimationEnded: () -> ()
+    @StateObject var viewModel = MapViewModel()
+    @State private var trains: [TrainPosition] = []
+    @State private var camera: MapCameraPosition = .region(
+        .init(
+            center: .init(latitude: 40.7831, longitude: -73.9712),
+            latitudinalMeters: 12500,
+            longitudinalMeters: 12500
+        )
+    )
     
-    private let gmsMapView = GMSMapView()
-    private let defaultZoomLevel: Float = 10
-    
-    func makeUIView(context: Context) -> GMSMapView {
-        // Create a GMSMapView centered around the city of NYC
-        let sanFrancisco = CLLocationCoordinate2D(latitude: 41.7128, longitude: -74.0060)
-        gmsMapView.camera = GMSCameraPosition.camera(withTarget: sanFrancisco, zoom: defaultZoomLevel)
-        gmsMapView.delegate = context.coordinator
-        gmsMapView.isUserInteractionEnabled = true
-        return gmsMapView
-    }
-    
-    func updateUIView(_ uiView: GMSMapView, context: Context) {
-        markers.forEach { marker in
-            marker.map = uiView
+    var body: some View {
+        Map(initialPosition: camera) {
+            ForEach(stations) { station in
+                Marker(
+                    station.name,
+                    systemImage: "tram.fill",
+                    coordinate: station.coordinate
+                )
+            }
         }
-        if let selectedMarker = selectedMarker {
-            let camera = GMSCameraPosition.camera(withTarget: selectedMarker.position, zoom: defaultZoomLevel)
-            print("Animating to position \(selectedMarker.position)")
-            CATransaction.begin()
-            CATransaction.setValue(NSNumber(floatLiteral: 5), forKey: kCATransactionAnimationDuration)
-            gmsMapView.animate(with: GMSCameraUpdate.setCamera(camera))
-            CATransaction.commit()
+        .ignoresSafeArea()
+        .task {
+            trains = viewModel.trainPositions
         }
-    }
-    
-    func makeCoordinator() -> MapViewCoordinator {
-        return MapViewCoordinator(self)
-    }
-    
-    
-    final class MapViewCoordinator: NSObject, GMSMapViewDelegate {
-        var mapView: MapView
-        
-        init(_ mapView: MapView) {
-            self.mapView = mapView
-        }
-        
-        func mapView(_ mapView: GMSMapView, didTapAt coordinate: CLLocationCoordinate2D) {
-            //      let marker = GMSMarker(position: coordinate)
-            //      self.mapView.polygonPath.append(marker)
-        }
-        
-        func mapView(_ mapView: GMSMapView, idleAt position: GMSCameraPosition) {
-            self.mapView.onAnimationEnded()
-        }
-        
     }
 }
 
 
-//#Preview {
-//    MapView(markers: <#Binding<[GMSMarker]>#>, selectedMarker: <#Binding<GMSMarker?>#>, onAnimationEnded: <#() -> ()#>)
-//}
+#Preview {
+    MapView()
+}

@@ -8,6 +8,8 @@
 import Foundation
 import SwiftProtobuf
 
+/// Fetch and update SwiftData models weekly to see where the train positioning is and if any new stations or tracks have been added
+
 actor MTAService {
   private let session = URLSession.shared
   private let feedURL = URL(string:
@@ -20,7 +22,7 @@ actor MTAService {
     req.httpMethod = "GET"
     let (data, _) = try await session.data(for: req)
     // Decode binary into generated Swift struct:
-      print(try TransitRealtime_FeedMessage(serializedBytes: data))
+      //print(try TransitRealtime_FeedMessage(serializedBytes: data))
       return try TransitRealtime_FeedMessage(serializedBytes: data)
   }
 }
