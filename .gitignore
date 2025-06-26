@@ -1,7 +1,5 @@
 *.pbxproj
-*.plist
 *.xcworkspacedata
 *.xcbkptlist
-*.plist
 WhichWay/keys.plist
 *.plist
