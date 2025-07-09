@@ -3,3 +3,6 @@
 *.xcbkptlist
 WhichWay/keys.plist
 *.plist
+
+# Large GTFS data files
+WhichWayTests/gtfs_subway.zip
