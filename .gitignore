@@ -6,3 +6,6 @@ WhichWay/keys.plist
 
 # Large GTFS data files
 WhichWayTests/gtfs_subway.zip
+WhichWayTests/stop_times.txt
+WhichWayTests/shapes.txt
+WhichWayTests/trips.txt
