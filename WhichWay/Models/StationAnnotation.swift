@@ -199,6 +199,7 @@ struct StationServiceBuilder {
         var stationLines: [StationLine] = []
         
         // Generate lines for major stations (simplified mapping)
+        // This is a temporary approach - in production, this would come from GTFS stop_times.txt
         if stationName.contains("times sq") || stationName.contains("42") {
             let timesSquareRoutes = ["1", "2", "3", "7", "N", "Q", "R", "W", "S"]
             stationLines = createLinesFromRoutes(timesSquareRoutes, routes: routes)
@@ -208,10 +209,33 @@ struct StationServiceBuilder {
         } else if stationName.contains("grand central") {
             let grandCentralRoutes = ["4", "5", "6", "7", "S"]
             stationLines = createLinesFromRoutes(grandCentralRoutes, routes: routes)
+        } else if stationName.contains("herald sq") || stationName.contains("34") {
+            let heraldSquareRoutes = ["B", "D", "F", "M", "N", "Q", "R", "W"]
+            stationLines = createLinesFromRoutes(heraldSquareRoutes, routes: routes)
+        } else if stationName.contains("fulton") {
+            let fultonRoutes = ["A", "C", "J", "Z", "2", "3", "4", "5"]
+            stationLines = createLinesFromRoutes(fultonRoutes, routes: routes)
+        } else if stationName.contains("atlantic") {
+            let atlanticRoutes = ["B", "D", "N", "Q", "R", "W", "2", "3", "4", "5"]
+            stationLines = createLinesFromRoutes(atlanticRoutes, routes: routes)
         } else {
-            // For other stations, assign a few common routes
-            let commonRoutes = ["4", "5", "6"]
-            stationLines = createLinesFromRoutes(commonRoutes, routes: routes)
+            // For other stations, assign a random but reasonable set of routes
+            // This prevents empty stations while we develop proper GTFS parsing
+            let commonRouteGroups = [
+                ["1", "2", "3"], // Red line group
+                ["4", "5", "6"], // Green line group  
+                ["N", "Q", "R", "W"], // Yellow line group
+                ["A", "C", "E"], // Blue line group
+                ["B", "D", "F", "M"], // Orange line group
+                ["G"], // Light Green
+                ["J", "Z"], // Brown line group
+                ["L"] // Gray line
+            ]
+            
+            // Use station name hash to consistently assign routes
+            let hashValue = abs(stationName.hashValue)
+            let selectedGroup = commonRouteGroups[hashValue % commonRouteGroups.count]
+            stationLines = createLinesFromRoutes(selectedGroup, routes: routes)
         }
         
         return stationLines

@@ -10,7 +10,11 @@
       "Bash(xcodebuild:*)",
       "mcp__context7__resolve-library-id",
       "mcp__context7__get-library-docs",
-      "Bash(rg:*)"
+      "Bash(rg:*)",
+      "Bash(ls:*)",
+      "Bash(git rm:*)",
+      "Bash(find:*)",
+      "Bash(git config:*)"
     ],
     "deny": []
   }
