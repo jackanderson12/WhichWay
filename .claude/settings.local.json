@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(swift test)",
+      "Bash(xcodebuild test:*)",
+      "Bash(xcodebuild build:*)",
+      "Bash(xcodebuild:*)",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs",
+      "Bash(rg:*)"
+    ],
+    "deny": []
+  }
+}
