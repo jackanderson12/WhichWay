@@ -16,8 +16,14 @@ class MapViewModel: ObservableObject {
 
     init() {
         Task {
+            await fetchBaseData()
             await fetchTrainPositions()
         }
+    }
+    
+    @MainActor
+    func fetchBaseData() async {
+        try? await service.fetchBaseData()
     }
 
     /// Fetches GTFS-RT feed and maps it into TrainPosition models.

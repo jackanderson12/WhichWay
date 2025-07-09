@@ -13,10 +13,20 @@ import SwiftData
 
 /// Represents a subway route polyline with coordinates
 @Model
-class SubwayRoutePolyline: Identifiable, Equatable {
+final class SubwayRoutePolyline: Identifiable, Equatable {
     var id: String
     var routeId: String
-    var coordinates: [CLLocationCoordinate2D]
+    private var _coordinates: [Coordinate]
+    
+    /// Access coordinates as CLLocationCoordinate2D array
+    var coordinates: [CLLocationCoordinate2D] {
+        get {
+            _coordinates.map { $0.clLocationCoordinate2D }
+        }
+        set {
+            _coordinates = newValue.map { Coordinate(from: $0) }
+        }
+    }
 
     // computed, so it's not part of synthesis
     var polyline: MKPolyline {
@@ -26,23 +36,32 @@ class SubwayRoutePolyline: Identifiable, Equatable {
     init(routeId: String, coordinates: [CLLocationCoordinate2D]) {
         self.id = routeId
         self.routeId = routeId
-        self.coordinates = coordinates
+        self._coordinates = coordinates.map { Coordinate(from: $0) }
     }
 }
 
-extension CLLocationCoordinate2D: Codable {
-    private enum CodingKeys: String, CodingKey {
-        case latitude, longitude
+// MARK: - Coordinate Wrapper
+
+/// A wrapper for CLLocationCoordinate2D that provides Codable conformance
+/// This avoids extending imported types with protocol conformances
+struct Coordinate: Codable, Equatable {
+    let latitude: Double
+    let longitude: Double
+    
+    init(latitude: Double, longitude: Double) {
+        self.latitude = latitude
+        self.longitude = longitude
     }
-    public func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(latitude, forKey: .latitude)
-        try container.encode(longitude, forKey: .longitude)
+    
+    init(from coordinate: CLLocationCoordinate2D) {
+        self.latitude = coordinate.latitude
+        self.longitude = coordinate.longitude
     }
-    public init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        let lat = try container.decode(CLLocationDegrees.self, forKey: .latitude)
-        let lon = try container.decode(CLLocationDegrees.self, forKey: .longitude)
-        self.init(latitude: lat, longitude: lon)
+    
+    /// Converts this wrapper back to CLLocationCoordinate2D
+    var clLocationCoordinate2D: CLLocationCoordinate2D {
+        CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
     }
 }
+
+

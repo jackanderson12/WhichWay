@@ -10,6 +10,7 @@
 		1333D5612DFF5A4500939EA5 /* SwiftProtobuf in Frameworks */ = {isa = PBXBuildFile; productRef = 1333D5602DFF5A4500939EA5 /* SwiftProtobuf */; };
 		1333D5632DFF5A4500939EA5 /* SwiftProtobufPluginLibrary in Frameworks */ = {isa = PBXBuildFile; productRef = 1333D5622DFF5A4500939EA5 /* SwiftProtobufPluginLibrary */; };
 		1333D5652DFF5A4500939EA5 /* protoc-gen-swift in Frameworks */ = {isa = PBXBuildFile; productRef = 1333D5642DFF5A4500939EA5 /* protoc-gen-swift */; };
+		133E2E102E11E5B000A91F52 /* Zip in Frameworks */ = {isa = PBXBuildFile; productRef = 133E2E0F2E11E5B000A91F52 /* Zip */; };
 		13EFFEF22E01F9930085EA36 /* GoogleMaps in Frameworks */ = {isa = PBXBuildFile; productRef = 13EFFEF12E01F9930085EA36 /* GoogleMaps */; };
 /* End PBXBuildFile section */
 
@@ -63,6 +64,7 @@
 				1333D5632DFF5A4500939EA5 /* SwiftProtobufPluginLibrary in Frameworks */,
 				1333D5612DFF5A4500939EA5 /* SwiftProtobuf in Frameworks */,
 				1333D5652DFF5A4500939EA5 /* protoc-gen-swift in Frameworks */,
+				133E2E102E11E5B000A91F52 /* Zip in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -127,6 +129,7 @@
 				1333D5622DFF5A4500939EA5 /* SwiftProtobufPluginLibrary */,
 				1333D5642DFF5A4500939EA5 /* protoc-gen-swift */,
 				13EFFEF12E01F9930085EA36 /* GoogleMaps */,
+				133E2E0F2E11E5B000A91F52 /* Zip */,
 			);
 			productName = WhichWay;
 			productReference = 1333D5212DFF2F0600939EA5 /* WhichWay.app */;
@@ -213,6 +216,7 @@
 			packageReferences = (
 				1333D54F2DFF40B600939EA5 /* XCRemoteSwiftPackageReference "swift-protobuf" */,
 				13EFFEF02E01F9930085EA36 /* XCRemoteSwiftPackageReference "ios-maps-sdk" */,
+				133E2E0E2E11E5B000A91F52 /* XCRemoteSwiftPackageReference "Zip" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 1333D5222DFF2F0600939EA5 /* Products */;
@@ -596,6 +600,14 @@
 				minimumVersion = 1.30.0;
 			};
 		};
+		133E2E0E2E11E5B000A91F52 /* XCRemoteSwiftPackageReference "Zip" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/marmelroy/Zip.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.1.2;
+			};
+		};
 		13EFFEF02E01F9930085EA36 /* XCRemoteSwiftPackageReference "ios-maps-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/googlemaps/ios-maps-sdk";
@@ -621,6 +633,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 1333D54F2DFF40B600939EA5 /* XCRemoteSwiftPackageReference "swift-protobuf" */;
 			productName = "protoc-gen-swift";
+		};
+		133E2E0F2E11E5B000A91F52 /* Zip */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 133E2E0E2E11E5B000A91F52 /* XCRemoteSwiftPackageReference "Zip" */;
+			productName = Zip;
 		};
 		13EFFEF12E01F9930085EA36 /* GoogleMaps */ = {
 			isa = XCSwiftPackageProductDependency;

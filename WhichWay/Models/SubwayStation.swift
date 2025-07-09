@@ -14,7 +14,7 @@ import SwiftData
 
 /// Represents a NYC subway station
 @Model
-class SubwayStation: Identifiable, Equatable {
+final class SubwayStation: Identifiable, Equatable {
     var id: String
     var name: String
     var latitude: Double

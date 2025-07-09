@@ -1,5 +1,5 @@
 {
-  "originHash" : "2bdd99c7e582ce9f899dfeb2382e381fb235623a3a29453609b34b2e92409d29",
+  "originHash" : "1d7b65672531b3034a8089931bea3a8a26f32c719a546aad8a082cb7a9c0ea06",
   "pins" : [
     {
       "identity" : "ios-maps-sdk",
@@ -17,6 +17,15 @@
       "state" : {
         "revision" : "102a647b573f60f73afdce5613a51d71349fe507",
         "version" : "1.30.0"
+      }
+    },
+    {
+      "identity" : "zip",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/marmelroy/Zip.git",
+      "state" : {
+        "revision" : "67fa55813b9e7b3b9acee9c0ae501def28746d76",
+        "version" : "2.1.2"
       }
     }
   ],
