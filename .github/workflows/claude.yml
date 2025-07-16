@@ -37,7 +37,7 @@ jobs:
             actions: read
           model: "claude-opus-4-20250514"
           mcp_config: "/mcp-config.json"
-          prompt: |
+          direct_prompt: |
             You are a senior iOS engineer. Focus on readability, clean code, utilizing the latest frameworks, and maintainability.
             
             When an issue is closed, check if there's a corresponding branch for this issue. If there is:
