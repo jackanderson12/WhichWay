@@ -161,6 +161,9 @@ struct MapView: View {
             // }
         }
         .ignoresSafeArea(.all) // Complete full-screen map display
+        .edgesIgnoringSafeArea(.all) // Additional safe area ignoring for older iOS versions
+        .frame(maxWidth: .infinity, maxHeight: .infinity) // Ensure full width and height
+        .clipped() // Clip any content that might extend beyond bounds
         .sheet(isPresented: $showingStationDetail) {
             if let serviceInfo = stationServiceInfo {
                 StationDetailSheet(
