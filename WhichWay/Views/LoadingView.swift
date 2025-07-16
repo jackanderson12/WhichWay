@@ -58,13 +58,13 @@ struct LoadingView: View {
             )
             .ignoresSafeArea()
             
-            VStack(spacing: 40) {
+            VStack(spacing: 30) {
                 
                 // MARK: - App Logo/Title
                 
-                VStack(spacing: 16) {
+                VStack(spacing: 12) {
                     Image(systemName: "tram.fill")
-                        .font(.system(size: 64))
+                        .font(.system(size: 40))
                         .foregroundColor(.blue)
                         .scaleEffect(pulseScale)
                         .rotationEffect(.degrees(rotationAngle))
@@ -78,12 +78,12 @@ struct LoadingView: View {
                         )
                     
                     Text("WhichWay")
-                        .font(.largeTitle)
+                        .font(.title2)
                         .fontWeight(.bold)
                         .foregroundColor(.primary)
                     
                     Text("NYC Subway Guide")
-                        .font(.subheadline)
+                        .font(.caption)
                         .foregroundColor(.secondary)
                 }
                 
@@ -105,7 +105,6 @@ struct LoadingView: View {
                 
                 Spacer()
             }
-            .padding()
             .onAppear {
                 startAnimations()
             }
@@ -123,7 +122,7 @@ struct LoadingView: View {
                 ForEach(0..<3) { index in
                     Circle()
                         .fill(Color.blue)
-                        .frame(width: 12, height: 12)
+                        .frame(width: 8, height: 8)
                         .scaleEffect(index == Int(animationOffset) ? 1.5 : 1.0)
                         .animation(
                             .easeInOut(duration: 0.6)
@@ -141,7 +140,7 @@ struct LoadingView: View {
             
             // Status message
             Text(message)
-                .font(.title3)
+                .font(.body)
                 .foregroundColor(.primary)
                 .multilineTextAlignment(.center)
                 .transition(.opacity)
@@ -162,12 +161,12 @@ struct LoadingView: View {
     private func loadedContent() -> some View {
         VStack(spacing: 16) {
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 48))
+                .font(.system(size: 32))
                 .foregroundColor(.green)
-                .scaleEffect(1.2)
+                .scaleEffect(1.1)
             
             Text("Ready to explore!")
-                .font(.title3)
+                .font(.body)
                 .foregroundColor(.primary)
         }
         .transition(.scale.combined(with: .opacity))
@@ -180,16 +179,16 @@ struct LoadingView: View {
         VStack(spacing: 20) {
             
             Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 48))
+                .font(.system(size: 32))
                 .foregroundColor(.orange)
             
             Text("Loading Failed")
-                .font(.title3)
+                .font(.body)
                 .fontWeight(.semibold)
                 .foregroundColor(.primary)
             
             Text(message)
-                .font(.body)
+                .font(.caption)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
             
@@ -202,7 +201,7 @@ struct LoadingView: View {
                     Image(systemName: "arrow.clockwise")
                     Text("Try Again")
                 }
-                .font(.headline)
+                .font(.body)
                 .foregroundColor(.white)
                 .padding(.horizontal, 24)
                 .padding(.vertical, 12)
