@@ -41,7 +41,7 @@ struct ContentView: View {
     // MARK: - View Body
     
     var body: some View {
-        Group {
+        ZStack {
             switch appStateManager.state {
             case .loading, .error:
                 LoadingView(
@@ -57,6 +57,7 @@ struct ContentView: View {
                     .transition(.opacity)
             }
         }
+        .ignoresSafeArea(.all) // Ensure the entire container ignores safe areas
         .animation(.easeInOut(duration: 0.5), value: appStateManager.state)
         .onAppear {
             setupAppState()
