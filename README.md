@@ -132,6 +132,23 @@ WhichWayTests/
 - **MTA GTFS-Realtime**: Live train positions and updates
 - **Apple Maps**: Base map data and location services
 
+## About This Project
+
+WhichWay serves dual purposes as both a production iOS application and a testing environment for AI-powered development tools:
+
+### Production iOS App
+A fully functional NYC subway tracking application built with modern SwiftUI architecture, real-time MTA data integration, and Apple Maps.
+
+### AI Development Testing
+This repository also serves as an excellent playground for testing and experimenting with **Claude Code Actions** and automated AI agent tasking. It provides a real-world iOS codebase to:
+
+- Test AI-powered code generation and modification capabilities
+- Experiment with automated development workflows  
+- Explore how AI can enhance iOS development productivity
+- Learn and practice with Claude Code Actions in a practical setting
+
+The codebase offers complexity suitable for testing various AI development scenarios while maintaining clean, modern iOS development patterns.
+
 ## Privacy & Permissions
 
 WhichWay requires the following permissions:
