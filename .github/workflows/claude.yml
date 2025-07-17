@@ -33,8 +33,6 @@ jobs:
         uses: anthropics/claude-code-action@beta
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          additional_permissions: |
-            actions: read
           model: "claude-opus-4-20250514"
           mcp_config: "/mcp-config.json"
           direct_prompt: |
