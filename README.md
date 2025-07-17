@@ -2,6 +2,23 @@
 
 A modern iOS application built with SwiftUI that provides real-time NYC subway tracking using Apple Maps and MTA's live GTFS data. Track trains, search stations, and navigate the subway system with ease.
 
+## About This Project
+
+WhichWay serves dual purposes as both a production iOS application and a testing environment for AI-powered development tools:
+
+### Production iOS App
+A fully functional NYC subway tracking application built with modern SwiftUI architecture, real-time MTA data integration, and Apple Maps.
+
+### AI Development Testing
+This repository also serves as an excellent playground for testing and experimenting with **Claude Code Actions** and automated AI agent tasking. It provides a real-world iOS codebase to:
+
+- Test AI-powered code generation and modification capabilities
+- Experiment with automated development workflows  
+- Explore how AI can enhance iOS development productivity
+- Learn and practice with Claude Code Actions in a practical setting
+
+The codebase offers complexity suitable for testing various AI development scenarios while maintaining clean, modern iOS development patterns.
+
 ## Features
 
 - **Real-time Train Tracking**: Live positions of NYC subway trains using MTA's GTFS-Realtime data
@@ -10,13 +27,6 @@ A modern iOS application built with SwiftUI that provides real-time NYC subway t
 - **Route Visualization**: Display subway routes and polylines on the map
 - **Offline Support**: SwiftData persistence for offline access to station data
 - **Modern UI**: Clean SwiftUI interface with smooth animations and transitions
-
-## Requirements
-
-- **iOS**: 17.0+
-- **Xcode**: 15.0+
-- **Swift**: 5.9+
-- **Platform**: iPhone and iPad
 
 ## Architecture
 
@@ -28,17 +38,6 @@ WhichWay follows modern iOS development patterns:
 - **MVVM Pattern**: Clean separation of concerns with ViewModels
 - **Dependency Injection**: Testable architecture with protocol-based dependencies
 - **Protocol Buffers**: Efficient parsing of GTFS real-time data
-
-### Key Components
-
-```
-WhichWay/
-├── Models/              # Data models for subway entities
-├── Services/            # MTA data fetching and processing
-├── ViewModels/          # Business logic and state management
-├── Views/               # SwiftUI user interface components
-└── Protos/              # GTFS Protocol Buffer definitions
-```
 
 ## Apple Maps Integration
 
@@ -70,97 +69,3 @@ WhichWay integrates with the Metropolitan Transportation Authority's real-time d
 3. **Transform** into app-specific models
 4. **Cache** in SwiftData for offline access
 5. **Update** UI with real-time information
-
-## Getting Started
-
-### 1. Clone the Repository
-```bash
-git clone https://github.com/jackanderson12/WhichWay.git
-cd WhichWay
-```
-
-### 2. Open in Xcode
-```bash
-open WhichWay.xcodeproj
-```
-
-### 3. Dependencies
-The project uses Swift Package Manager for dependencies:
-- **SwiftProtobuf**: Protocol Buffer parsing
-- **Zip**: GTFS data extraction
-- **GoogleMaps**: Enhanced mapping capabilities (optional)
-
-Dependencies are automatically resolved when you open the project in Xcode.
-
-### 4. Build and Run
-1. Select a target device or simulator (iOS 17.0+)
-2. Press `Cmd+R` to build and run
-3. Allow location permissions when prompted for optimal experience
-
-## Key Services
-
-### MTAService
-Handles all MTA data operations:
-- Fetches GTFS static and real-time data
-- Processes and parses Protocol Buffer feeds
-- Manages data updates and caching
-
-### StationNameResolver
-Resolves station identifiers to human-readable names using GTFS static data.
-
-### GTFSDataProcessor
-Transforms raw GTFS data into app-specific models for UI consumption.
-
-## Testing
-
-The project includes comprehensive test coverage:
-
-```bash
-# Run unit tests
-Cmd+U in Xcode
-
-# Test files location
-WhichWayTests/
-├── MTAServiceTests.swift      # MTA data service tests
-├── MapViewModelTests.swift    # ViewModel logic tests
-└── TestUtilities.swift       # Test helpers and mocks
-```
-
-## Data Sources
-
-- **MTA GTFS Static**: Station and route information
-- **MTA GTFS-Realtime**: Live train positions and updates
-- **Apple Maps**: Base map data and location services
-
-## About This Project
-
-WhichWay serves dual purposes as both a production iOS application and a testing environment for AI-powered development tools:
-
-### Production iOS App
-A fully functional NYC subway tracking application built with modern SwiftUI architecture, real-time MTA data integration, and Apple Maps.
-
-### AI Development Testing
-This repository also serves as an excellent playground for testing and experimenting with **Claude Code Actions** and automated AI agent tasking. It provides a real-world iOS codebase to:
-
-- Test AI-powered code generation and modification capabilities
-- Experiment with automated development workflows  
-- Explore how AI can enhance iOS development productivity
-- Learn and practice with Claude Code Actions in a practical setting
-
-The codebase offers complexity suitable for testing various AI development scenarios while maintaining clean, modern iOS development patterns.
-
-## Privacy & Permissions
-
-WhichWay requires the following permissions:
-- **Location Services**: To center map on user's location (optional)
-- **Network Access**: To fetch real-time MTA data
-
-No personal data is collected or transmitted beyond Apple's standard MapKit usage.
-
-## Development
-
-### Project Structure
-- **Dependency Injection**: Clean testable architecture
-- **Protocol-based Design**: Interfaces for all services
-- **SwiftData Models**: Persistent storage for offline support
-- **Environment Configuration**: Separate configurations for development/production
