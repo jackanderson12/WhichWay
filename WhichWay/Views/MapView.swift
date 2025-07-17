@@ -20,6 +20,7 @@ import SwiftData
  * 
  * ## Features:
  * - Interactive map centered on NYC
+ * - Real-time search and filtering of subway stations
  * - Real-time train position markers
  * - Subway station markers with names
  * - Responsive camera positioning
@@ -78,6 +79,10 @@ struct MapView: View {
         )
     )
     
+    /// Search text for filtering subway stations by name
+    /// Updated in real-time by SearchBarView overlay
+    @State private var searchText = ""
+    
     // MARK: - Initialization
     
     /**
@@ -93,23 +98,47 @@ struct MapView: View {
         self._viewModel = StateObject(wrappedValue: DependencyContainer.shared.makeMapViewModel())
     }
     
+    // MARK: - Computed Properties
+    
+    /**
+     * Filtered stations based on current search text
+     * 
+     * Returns a subset of all stations that match the search criteria.
+     * When search text is empty, returns all stations for full map display.
+     * 
+     * ## Filtering Logic:
+     * - Case-insensitive partial matching on station names
+     * - Real-time updates as user types in SearchBarView
+     * - Empty search shows all stations
+     * - Optimized for responsive user experience
+     * 
+     * ## Returns:
+     * Array of SubwayStation objects matching search criteria
+     */
+    private var filteredStations: [SubwayStation] {
+        SearchBarView.filteredStations(stations, searchText: searchText)
+    }
+    
     // MARK: - View Body
     
     /**
-     * Main view body rendering the interactive map
+     * Main view body rendering the interactive map with search overlay
      * 
      * Creates a MapKit map with:
-     * - Subway station markers from SwiftData
+     * - Filtered subway station markers from SwiftData
      * - Train position markers from real-time data
      * - Interactive camera controls
+     * - SearchBarView overlay for station filtering
      * - Full-screen display ignoring safe areas
      * 
      * ## Map Elements:
-     * - Station markers: Tram icons with station names
+     * - Station markers: Tram icons with filtered station names
+     * - Search overlay: Real-time station filtering interface
      * - Train markers: (TODO) Dynamic train icons with route colors
      * - Route polylines: (TODO) Visual route paths
      * 
      * ## User Interactions:
+     * - Real-time search and filtering of visible stations
      * - Pan and zoom gestures
      * - Tap to select stations/trains
      * - Pinch to zoom in/out
@@ -120,8 +149,8 @@ struct MapView: View {
             
             // MARK: - Station Markers
             
-            // Display all subway stations from SwiftData with interactive overlays
-            ForEach(stations) { station in
+            // Display filtered subway stations from SwiftData with interactive overlays
+            ForEach(filteredStations) { station in
                 Annotation(
                     station.name,
                     coordinate: station.coordinate
@@ -164,6 +193,13 @@ struct MapView: View {
         .edgesIgnoringSafeArea(.all) // Additional safe area ignoring for older iOS versions
         .frame(maxWidth: .infinity, maxHeight: .infinity) // Ensure full width and height
         .clipped() // Clip any content that might extend beyond bounds
+        .overlay(
+            // MARK: - Search Bar Overlay
+            
+            // SearchBarView positioned on top of the map for station filtering
+            SearchBarView(searchText: $searchText)
+                .allowsHitTesting(true) // Ensure search bar receives touch events
+        )
         .sheet(isPresented: $showingStationDetail) {
             if let serviceInfo = stationServiceInfo {
                 StationDetailSheet(
