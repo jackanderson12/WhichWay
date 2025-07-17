@@ -5,7 +5,7 @@ on:
   pull_request_review_comment:
     types: [created]
   issues:
-    types: [opened, assigned, closed]  # Added 'closed' here
+    types: [opened, assigned]  # Removed 'closed'
   pull_request_review:
     types: [submitted]
 jobs:
@@ -14,12 +14,12 @@ jobs:
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
       (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
       (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
-      (github.event_name == 'issues' && github.event.action == 'closed' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude'))) ||
-      (github.event_name == 'issues' && github.event.action != 'closed' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude'))) ||
+      (github.event_name == 'push' && github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master')
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: write  # Changed from read to write to create PRs
+      pull-requests: write
       issues: read
       id-token: write
       actions: read
@@ -27,7 +27,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Changed from 1 to 0 to get full history for branching
+          fetch-depth: 0
       - name: Run Claude Code
         id: claude
         uses: anthropics/claude-code-action@beta
@@ -40,8 +40,13 @@ jobs:
           direct_prompt: |
             You are a senior iOS engineer. Focus on readability, clean code, utilizing the latest frameworks, and maintainability.
             
-            When an issue is closed, check if there's a corresponding branch for this issue. If there is:
-            1. Ensure the branch is up to date
-            2. Create a pull request from the issue branch to main
-            3. Include a descriptive title and body referencing the closed issue
-            4. Use the format: "Closes #<issue_number>" in the PR description
+            When there's a push to a branch that appears to be related to an issue:
+            1. Extract the issue number from the branch name if possible
+            2. Check if a pull request already exists for this branch
+            3. If no PR exists, create a pull request from this branch to main
+            4. Include a descriptive title based on the branch name and recent commits
+            5. If you can identify the issue number, use "Closes #<issue_number>" in the PR description
+            6. Include a summary of the changes in the commit(s)
+            
+            Current branch: ${{ github.ref_name }}
+            Recent commits: Check the git log for context
