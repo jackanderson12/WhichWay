@@ -21,14 +21,16 @@ import SwiftUI
  * - System blur for depth and modern iOS aesthetic
  * - Maintains map visibility while ensuring text readability
  */
-private var searchBarBackground: some View {
-    ZStack {
-        // Base background color
-        Color(.systemBackground)
-            .opacity(0.8)
-        
-        // System blur effect for modern iOS look
-        Rectangle()
-            .fill(.regularMaterial)
+struct SearchBarBackground: View {
+    var body: some View {
+        ZStack {
+            // Base background color
+            Color(.systemBackground)
+                .opacity(0.8)
+            
+            // System blur effect for modern iOS look
+            Rectangle()
+                .fill(.regularMaterial)
+        }
     }
 }
