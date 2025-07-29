@@ -9,23 +9,7 @@ import SwiftUI
 
 // MARK: - Station Detail Sheet
 
-/**
- * StationDetailSheet - Half sheet view displaying station information
- * 
- * This view presents detailed information about a subway station,
- * including the lines that serve it, organized by direction.
- * 
- * ## Features:
- * - Station name and location
- * - Lines categorized by direction (Uptown/Downtown)
- * - Route badges with official MTA colors
- * - Smooth animations and transitions
- * - Native iOS half sheet presentation
- * 
- * ## Usage:
- * Presented as a sheet when a station annotation is tapped on the map.
- * Uses SwiftUI's native sheet presentation with detents for half-screen display.
- */
+/// Sheet displaying station details and serving lines
 struct StationDetailSheet: View {
     
     // MARK: - Properties

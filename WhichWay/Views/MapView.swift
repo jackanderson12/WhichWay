@@ -11,145 +11,48 @@ import SwiftData
 
 // MARK: - Map View
 
-/**
- * MapView - Main SwiftUI view for displaying the NYC subway system
- * 
- * This view provides an interactive map interface showing subway stations,
- * train positions, and route information. It integrates with SwiftData for
- * persistent storage and uses MapKit for map rendering.
- * 
- * ## Features:
- * - Interactive map centered on NYC
- * - Real-time search and filtering of subway stations
- * - Real-time train position markers
- * - Subway station markers with names
- * - Responsive camera positioning
- * - SwiftData integration for offline capability
- * 
- * ## Architecture:
- * - Follows SwiftUI declarative pattern
- * - Uses MVVM architecture with MapViewModel
- * - Integrates SwiftData for persistent storage
- * - Leverages MapKit for map rendering and interactions
- * 
- * ## Data Sources:
- * - Stations: SwiftData persistent storage (@Query)
- * - Train positions: Real-time via MapViewModel
- * - Map tiles: Apple Maps/MapKit
- * 
- * ## Performance Considerations:
- * - Stations loaded once from SwiftData
- * - Train positions updated periodically
- * - Map rendering optimized by MapKit
- * - Efficient marker updates using SwiftUI's diffing
- */
+/// Main map view displaying NYC subway stations and trains
 struct MapView: View {
     
     // MARK: - SwiftData Integration
     
-    /// SwiftData model context for database operations
     @Environment(\.modelContext) var context
-    
-    /// Persistent subway stations loaded from SwiftData
-    /// Updated automatically when database changes
     @Query private var stations: [SubwayStation]
     
     // MARK: - View Model and State
     
-    /// View model managing real-time train data and MTA service interactions
     @StateObject private var viewModel: MapViewModel
-    
-    /// Local state for train positions (updated from view model)
     @State private var trains: [TrainPosition] = []
-    
-    /// State for station detail sheet presentation
     @State private var selectedStation: SubwayStation?
     @State private var showingStationDetail = false
-    
-    /// Station service information for detail sheet
     @State private var stationServiceInfo: StationServiceInfo?
-    
-    /// Camera position for map display
-    /// Centered on Manhattan with appropriate zoom level for subway visibility
     @State private var camera: MapCameraPosition = .region(
         .init(
-            center: .init(latitude: 40.7831, longitude: -73.9712), // Times Square area
-            latitudinalMeters: 12500,  // ~7.8 miles vertical span
-            longitudinalMeters: 12500  // ~7.8 miles horizontal span
+            center: .init(latitude: 40.7831, longitude: -73.9712), // Times Square
+            latitudinalMeters: 12500,
+            longitudinalMeters: 12500
         )
     )
-    
-    /// Search text for filtering subway stations by name
-    /// Updated in real-time by SearchBarView overlay
     @State private var searchText = ""
     
     // MARK: - Initialization
-    
-    /**
-     * Initializes the MapView with dependency injection
-     * 
-     * Creates a view model using the dependency container to ensure
-     * proper service injection and testability.
-     */
     init() {
         // Create view model using dependency container
-        // Note: This is a temporary approach - in SwiftUI, we'd typically use
-        // a factory pattern or pass the view model from the parent
         self._viewModel = StateObject(wrappedValue: DependencyContainer.shared.makeMapViewModel())
     }
     
     // MARK: - Computed Properties
     
-    /**
-     * Filtered stations based on current search text
-     * 
-     * Returns a subset of all stations that match the search criteria.
-     * When search text is empty, returns all stations for full map display.
-     * 
-     * ## Filtering Logic:
-     * - Case-insensitive partial matching on station names
-     * - Real-time updates as user types in SearchBarView
-     * - Empty search shows all stations
-     * - Optimized for responsive user experience
-     * 
-     * ## Returns:
-     * Array of SubwayStation objects matching search criteria
-     */
+    /// Filtered stations based on search text
     private var filteredStations: [SubwayStation] {
         SearchBarView.filteredStations(stations, searchText: searchText)
     }
     
     // MARK: - View Body
-    
-    /**
-     * Main view body rendering the interactive map with search overlay
-     * 
-     * Creates a MapKit map with:
-     * - Filtered subway station markers from SwiftData
-     * - Train position markers from real-time data
-     * - Interactive camera controls
-     * - SearchBarView overlay for station filtering
-     * - Full-screen display ignoring safe areas
-     * 
-     * ## Map Elements:
-     * - Station markers: Tram icons with filtered station names
-     * - Search overlay: Real-time station filtering interface
-     * - Train markers: (TODO) Dynamic train icons with route colors
-     * - Route polylines: (TODO) Visual route paths
-     * 
-     * ## User Interactions:
-     * - Real-time search and filtering of visible stations
-     * - Pan and zoom gestures
-     * - Tap to select stations/trains
-     * - Pinch to zoom in/out
-     * - Standard MapKit gesture recognition
-     */
     var body: some View {
         Map(initialPosition: camera) {
             
             // MARK: - Station Markers
-            
-            // Display filtered subway stations from SwiftData with interactive overlays
             ForEach(filteredStations) { station in
                 Annotation(
                     station.name,
@@ -189,16 +92,15 @@ struct MapView: View {
             //         .stroke(route.color, lineWidth: 3)
             // }
         }
-        .ignoresSafeArea(.all) // Complete full-screen map display
-        .edgesIgnoringSafeArea(.all) // Additional safe area ignoring for older iOS versions
-        .frame(maxWidth: .infinity, maxHeight: .infinity) // Ensure full width and height
-        .clipped() // Clip any content that might extend beyond bounds
+        .ignoresSafeArea(.all)
+        .edgesIgnoringSafeArea(.all)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .clipped()
         .overlay(
             // MARK: - Search Bar Overlay
             
-            // SearchBarView positioned on top of the map for station filtering
             SearchBarView(searchText: $searchText)
-                .allowsHitTesting(true) // Ensure search bar receives touch events
+                .allowsHitTesting(true)
         )
         .sheet(isPresented: $showingStationDetail) {
             if let serviceInfo = stationServiceInfo {
@@ -216,12 +118,7 @@ struct MapView: View {
     
     // MARK: - Helper Methods
     
-    /**
-     * Loads station service information for the detail sheet
-     * 
-     * This method queries the SwiftData context for route information
-     * and builds the service info using the StationServiceBuilder.
-     */
+    /// Loads station service info for detail sheet
     private func loadStationServiceInfo(for station: SubwayStation) {
         // TODO: Load routes from SwiftData context
         // For now, we'll use sample data
@@ -233,11 +130,7 @@ struct MapView: View {
         )
     }
     
-    /**
-     * Creates sample routes for demonstration
-     * 
-     * In a full implementation, this would load from SwiftData
-     */
+    /// Creates sample routes for demonstration
     private func createSampleRoutes() -> [SubwayRoute] {
         return [
             SubwayRoute(

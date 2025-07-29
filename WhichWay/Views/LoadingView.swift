@@ -9,32 +9,12 @@ import SwiftUI
 
 // MARK: - Loading View
 
-/**
- * LoadingView - Displays startup loading screen with animated indicators
- * 
- * This view provides visual feedback during the app's startup data loading process.
- * It includes animated loading indicators, status messages, and error handling.
- * 
- * ## Features:
- * - Animated subway-themed loading indicators
- * - Progress status messages
- * - Error display with retry functionality
- * - Smooth transitions between states
- * 
- * ## Design:
- * - Full-screen loading experience
- * - NYC subway branding and colors
- * - Accessible loading indicators
- * - Professional loading animations
- */
+/// Startup loading screen with animated indicators and error handling
 struct LoadingView: View {
     
     // MARK: - Properties
     
-    /// Current app state to display
     let state: AppState
-    
-    /// Callback for retry action
     let onRetry: () async -> Void
     
     // MARK: - Animation State
@@ -113,7 +93,6 @@ struct LoadingView: View {
     
     // MARK: - Loading Content
     
-    @ViewBuilder
     private func loadingContent(message: String) -> some View {
         VStack(spacing: 20) {
             
@@ -157,7 +136,6 @@ struct LoadingView: View {
     
     // MARK: - Loaded Content
     
-    @ViewBuilder
     private func loadedContent() -> some View {
         VStack(spacing: 16) {
             Image(systemName: "checkmark.circle.fill")
@@ -174,7 +152,6 @@ struct LoadingView: View {
     
     // MARK: - Error Content
     
-    @ViewBuilder
     private func errorContent(message: String) -> some View {
         VStack(spacing: 20) {
             
@@ -214,9 +191,7 @@ struct LoadingView: View {
     
     // MARK: - Helper Methods
     
-    /**
-     * Starts the loading animations
-     */
+    /// Starts the loading animations
     private func startAnimations() {
         withAnimation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true)) {
             pulseScale = 1.1
@@ -224,38 +199,6 @@ struct LoadingView: View {
         
         withAnimation(.linear(duration: 8.0).repeatForever(autoreverses: false)) {
             rotationAngle = 360
-        }
-    }
-}
-
-// MARK: - Subway Line Indicator
-
-/**
- * SubwayLineIndicator - Small animated indicator for subway lines
- * 
- * Displays a subway line number with authentic NYC subway styling.
- */
-struct SubwayLineIndicator: View {
-    let line: String
-    
-    var body: some View {
-        Text(line)
-            .font(.caption)
-            .fontWeight(.bold)
-            .foregroundColor(.white)
-            .frame(width: 20, height: 20)
-            .background(lineColor(for: line))
-            .clipShape(Circle())
-    }
-    
-    private func lineColor(for line: String) -> Color {
-        switch line {
-        case "1", "2", "3":
-            return Color(hex: "EE352E") // Red
-        case "4", "5", "6":
-            return Color(hex: "00933C") // Green
-        default:
-            return Color.blue
         }
     }
 }

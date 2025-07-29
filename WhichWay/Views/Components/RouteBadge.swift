@@ -8,11 +8,7 @@ import SwiftUI
 
 // MARK: - Route Badge
 
-/**
- * RouteBadge - Visual badge representing a subway route
- * 
- * Displays the route identifier with official MTA colors and styling.
- */
+/// Badge displaying subway route with MTA colors
 struct RouteBadge: View {
     
     let line: StationLine

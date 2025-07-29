@@ -8,12 +8,7 @@ import SwiftUI
 
 // MARK: - Line Direction Section
 
-/**
- * LineDirectionSection - Section displaying lines for a specific direction
- * 
- * Shows a group of subway lines organized by direction with
- * route badges and line information.
- */
+/// Section displaying subway lines by direction
 struct LineDirectionSection: View {
     
     let direction: LineDirection
