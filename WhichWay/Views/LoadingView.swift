@@ -93,13 +93,13 @@ struct LoadingView: View {
                     
                     switch state {
                     case .loading(let message):
-                        loadingContent(message: message)
+                        LoadingContentView(message: message)
                         
                     case .loaded:
-                        loadedContent()
+                        LoadedContentView()
                         
                     case .error(let message):
-                        errorContent(message: message)
+                        ErrorContentView(message: message, onRetry: onRetry)
                     }
                 }
                 
@@ -109,107 +109,6 @@ struct LoadingView: View {
                 startAnimations()
             }
         }
-    }
-    
-    // MARK: - Loading Content
-    
-    @ViewBuilder
-    private func loadingContent(message: String) -> some View {
-        VStack(spacing: 20) {
-            
-            // Animated progress indicator
-            HStack(spacing: 8) {
-                ForEach(0..<3) { index in
-                    Circle()
-                        .fill(Color.blue)
-                        .frame(width: 8, height: 8)
-                        .scaleEffect(index == Int(animationOffset) ? 1.5 : 1.0)
-                        .animation(
-                            .easeInOut(duration: 0.6)
-                                .repeatForever(autoreverses: true)
-                                .delay(Double(index) * 0.2),
-                            value: animationOffset
-                        )
-                }
-            }
-            .onAppear {
-                withAnimation {
-                    animationOffset = 2
-                }
-            }
-            
-            // Status message
-            Text(message)
-                .font(.body)
-                .foregroundColor(.primary)
-                .multilineTextAlignment(.center)
-                .transition(.opacity)
-            
-            // Subway line animation
-            HStack(spacing: 4) {
-                ForEach(["1", "2", "3", "4", "5", "6"], id: \.self) { line in
-                    SubwayLineIndicator(line: line)
-                        .scaleEffect(pulseScale)
-                }
-            }
-        }
-    }
-    
-    // MARK: - Loaded Content
-    
-    @ViewBuilder
-    private func loadedContent() -> some View {
-        VStack(spacing: 16) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 32))
-                .foregroundColor(.green)
-                .scaleEffect(1.1)
-            
-            Text("Ready to explore!")
-                .font(.body)
-                .foregroundColor(.primary)
-        }
-        .transition(.scale.combined(with: .opacity))
-    }
-    
-    // MARK: - Error Content
-    
-    @ViewBuilder
-    private func errorContent(message: String) -> some View {
-        VStack(spacing: 20) {
-            
-            Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 32))
-                .foregroundColor(.orange)
-            
-            Text("Loading Failed")
-                .font(.body)
-                .fontWeight(.semibold)
-                .foregroundColor(.primary)
-            
-            Text(message)
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-            
-            Button(action: {
-                Task {
-                    await onRetry()
-                }
-            }) {
-                HStack {
-                    Image(systemName: "arrow.clockwise")
-                    Text("Try Again")
-                }
-                .font(.body)
-                .foregroundColor(.white)
-                .padding(.horizontal, 24)
-                .padding(.vertical, 12)
-                .background(Color.blue)
-                .cornerRadius(8)
-            }
-        }
-        .transition(.scale.combined(with: .opacity))
     }
     
     // MARK: - Helper Methods
@@ -224,38 +123,6 @@ struct LoadingView: View {
         
         withAnimation(.linear(duration: 8.0).repeatForever(autoreverses: false)) {
             rotationAngle = 360
-        }
-    }
-}
-
-// MARK: - Subway Line Indicator
-
-/**
- * SubwayLineIndicator - Small animated indicator for subway lines
- * 
- * Displays a subway line number with authentic NYC subway styling.
- */
-struct SubwayLineIndicator: View {
-    let line: String
-    
-    var body: some View {
-        Text(line)
-            .font(.caption)
-            .fontWeight(.bold)
-            .foregroundColor(.white)
-            .frame(width: 20, height: 20)
-            .background(lineColor(for: line))
-            .clipShape(Circle())
-    }
-    
-    private func lineColor(for line: String) -> Color {
-        switch line {
-        case "1", "2", "3":
-            return Color(hex: "EE352E") // Red
-        case "4", "5", "6":
-            return Color(hex: "00933C") // Green
-        default:
-            return Color.blue
         }
     }
 }
