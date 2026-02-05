@@ -7,6 +7,7 @@
 
 import Foundation
 import Testing
+import SwiftData
 import Zip
 @testable import WhichWay
 
@@ -192,7 +193,10 @@ class MockGTFSDataProcessor: GTFSDataProcessorProtocol {
             currentStopId: vehicle?.stopID,
             currentStatus: "STOPPED_AT",
             lastMovementTimestamp: Date(),
-            nextStops: mockStopInfos
+            nextStops: mockStopInfos,
+            latitude: nil,
+            longitude: nil,
+            bearing: nil
         )
     }
 

@@ -72,7 +72,27 @@ struct TrainPosition: Identifiable {
     
     /// Array of upcoming stops with arrival predictions
     let nextStops: [StopInfo]
-    
+
+    // MARK: - GPS Position
+
+    /// Latitude from VehiclePosition GPS data (nil if not reported)
+    let latitude: Double?
+
+    /// Longitude from VehiclePosition GPS data (nil if not reported)
+    let longitude: Double?
+
+    /// Bearing/heading in degrees from VehiclePosition GPS data (nil if not reported)
+    let bearing: Double?
+
+    /// Returns the train's GPS coordinate if available
+    var coordinate: CLLocationCoordinate2D? {
+        guard let latitude, let longitude else { return nil }
+        return CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+    }
+
+    /// Whether this train has a reported GPS position
+    var hasPosition: Bool { latitude != nil && longitude != nil }
+
     // MARK: - Computed Properties for UI Display
     
     /**

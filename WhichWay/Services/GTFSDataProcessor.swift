@@ -171,6 +171,11 @@ class GTFSDataProcessor: GTFSDataProcessorProtocol {
 
         let nextStops = tripUpdate != nil ? extractStopInfos(from: tripUpdate!) : []
 
+        // Extract GPS position from VehiclePosition
+        let latitude: Double? = vehicle?.hasPosition == true ? Double(vehicle!.position.latitude) : nil
+        let longitude: Double? = vehicle?.hasPosition == true ? Double(vehicle!.position.longitude) : nil
+        let bearing: Double? = (vehicle?.hasPosition == true && vehicle!.position.hasBearing) ? Double(vehicle!.position.bearing) : nil
+
         return TrainPosition(
             id: tripId,
             tripId: tripId,
@@ -181,7 +186,10 @@ class GTFSDataProcessor: GTFSDataProcessorProtocol {
             currentStopId: currentStopId,
             currentStatus: currentStatus,
             lastMovementTimestamp: lastMovementTimestamp,
-            nextStops: nextStops
+            nextStops: nextStops,
+            latitude: latitude,
+            longitude: longitude,
+            bearing: bearing
         )
     }
 

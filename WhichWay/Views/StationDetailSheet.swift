@@ -11,6 +11,7 @@ struct StationDetailSheet: View {
     let station: SubwayStation
     let arrivals: [StationArrival]
     @Binding var isPresented: Bool
+    var onTrainTapped: ((String) -> Void)?
 
     private var uptownArrivals: [StationArrival] {
         arrivals.filter { $0.direction == "N" }
@@ -131,7 +132,12 @@ struct StationDetailSheet: View {
             ForEach(sortedRoutes, id: \.self) { routeId in
                 if let routeArrivals = grouped[routeId] {
                     ForEach(routeArrivals.prefix(3)) { arrival in
-                        ArrivalRow(arrival: arrival)
+                        Button {
+                            onTrainTapped?(arrival.tripId)
+                        } label: {
+                            ArrivalRow(arrival: arrival)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -185,6 +191,7 @@ struct StationDetailSheet: View {
                 tripId: "trip3"
             ),
         ],
-        isPresented: .constant(true)
+        isPresented: .constant(true),
+        onTrainTapped: { tripId in print("Tapped train: \(tripId)") }
     )
 }

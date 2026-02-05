@@ -38,7 +38,10 @@ struct TestDataFactory {
                     scheduledTrack: "1",
                     actualTrack: "1"
                 )
-            ]
+            ],
+            latitude: nil,
+            longitude: nil,
+            bearing: nil
         )
     }
     
@@ -47,17 +50,20 @@ struct TestDataFactory {
         trainCount: Int = 3,
         routeId: String = "4"
     ) -> TransitRealtime_FeedMessage {
-        let entities = (0..<trainCount).map { index in
-            GTFSRTTestDataBuilder.createVehicleEntity(
+        var entities: [TransitRealtime_FeedEntity] = []
+        for index in 0..<trainCount {
+            let dir: TransitRealtime_NyctTripDescriptor.Direction = index % 2 == 0 ? .north : .south
+            let entity = GTFSRTTestDataBuilder.createVehicleEntity(
                 id: "entity-\(index)",
                 tripId: "trip-\(index)",
                 routeId: routeId,
                 trainId: "\(routeId)-\(1000 + index)",
+                direction: dir,
                 currentStopId: "12\(index)N",
-                direction: index % 2 == 0 ? .north : .south,
                 latitude: 40.7589 + Double(index) * 0.01,
                 longitude: -73.9851 + Double(index) * 0.01
             )
+            entities.append(entity)
         }
         
         return GTFSRTTestDataBuilder.createFeed(entities: entities)

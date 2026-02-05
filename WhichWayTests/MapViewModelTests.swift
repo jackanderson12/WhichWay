@@ -225,7 +225,10 @@ struct TrainPositionTests {
             currentStopId: "stop-123",
             currentStatus: "STOPPED_AT",
             lastMovementTimestamp: Date(),
-            nextStops: []
+            nextStops: [],
+            latitude: nil,
+            longitude: nil,
+            bearing: nil
         )
 
         #expect(trainPosition.displayName == "4 Train")
@@ -245,7 +248,10 @@ struct TrainPositionTests {
             currentStopId: nil,
             currentStatus: "IN_TRANSIT",
             lastMovementTimestamp: Date(),
-            nextStops: []
+            nextStops: [],
+            latitude: nil,
+            longitude: nil,
+            bearing: nil
         )
 
         let southTrain = TrainPosition(
@@ -258,7 +264,10 @@ struct TrainPositionTests {
             currentStopId: nil,
             currentStatus: "IN_TRANSIT",
             lastMovementTimestamp: Date(),
-            nextStops: []
+            nextStops: [],
+            latitude: nil,
+            longitude: nil,
+            bearing: nil
         )
 
         #expect(northTrain.directionName == "Uptown/Bronx")
