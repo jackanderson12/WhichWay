@@ -22,6 +22,8 @@ class MapViewModel {
     var error: Error?
     var selectedStation: SubwayStation?
     var isShowingStationDetail = false
+    var trackedTrain: TrainPosition?
+    var isShowingTrackedTrain = false
 
     // MARK: - Dependencies
 
@@ -128,6 +130,35 @@ class MapViewModel {
                 color: route.routeColor ?? "808080",
                 textColor: route.routeTextColor ?? "FFFFFF"
             )
+        }
+    }
+
+    // MARK: - Train Tracking
+
+    @MainActor
+    func trackTrain(tripId: String) {
+        if let train = trainPositions.first(where: { $0.tripId == tripId }) {
+            trackedTrain = train
+            isShowingTrackedTrain = true
+        }
+    }
+
+    @MainActor
+    func stopTrackingTrain() {
+        trackedTrain = nil
+        isShowingTrackedTrain = false
+    }
+
+    func trainsServingStation(_ station: SubwayStation) -> [TrainPosition] {
+        let childStopIds = Set(station.childStopIds.isEmpty
+            ? [station.id, "\(station.id)N", "\(station.id)S"]
+            : station.childStopIds)
+
+        return trainPositions.filter { train in
+            if let currentStopId = train.currentStopId, childStopIds.contains(currentStopId) {
+                return true
+            }
+            return train.nextStops.contains { childStopIds.contains($0.stopId) }
         }
     }
 

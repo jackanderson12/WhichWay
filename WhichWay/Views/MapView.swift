@@ -37,6 +37,12 @@ struct MapView: View {
         SearchBarView.filteredStations(stations, searchText: searchText)
     }
 
+    /// Stations within 0.5 miles of user location (only after location is available)
+    private var nearbyStations: [SubwayStation] {
+        guard let userLocation = viewModel.locationManager.location else { return [] }
+        return stationsWithinRadius(filteredStations, center: userLocation.coordinate, radiusMiles: 0.5)
+    }
+
     // MARK: - Body
 
     var body: some View {
@@ -44,8 +50,16 @@ struct MapView: View {
             // User location
             UserAnnotation()
 
-            // Station markers
-            ForEach(filteredStations) { station in
+            // Route polylines (always visible)
+            ForEach(polylines) { polyline in
+                if let route = routes.first(where: { $0.routeId == polyline.routeId }) {
+                    MapPolyline(coordinates: polyline.coordinates)
+                        .stroke(route.backgroundSwiftUIColor, lineWidth: 3)
+                }
+            }
+
+            // Station markers — only shown after location is available, filtered to 0.5mi radius
+            ForEach(nearbyStations) { station in
                 Annotation(
                     station.name,
                     coordinate: station.coordinate
@@ -64,14 +78,28 @@ struct MapView: View {
                 }
             }
 
-            // Route polylines
-            ForEach(polylines) { polyline in
-                if let route = routes.first(where: { $0.routeId == polyline.routeId }) {
-                    MapPolyline(coordinates: polyline.coordinates)
-                        .stroke(route.backgroundSwiftUIColor, lineWidth: 3)
+            // Tracked train annotation
+            if let train = viewModel.trackedTrain, let coord = train.coordinate {
+                Annotation("\(train.routeId) Train", coordinate: coord) {
+                    ZStack {
+                        Circle()
+                            .fill(routeColor(for: train.routeId))
+                            .frame(width: 32, height: 32)
+                        Text(train.routeId)
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(routeTextColor(for: train.routeId))
+                        if let bearing = train.bearing {
+                            Image(systemName: "location.north.fill")
+                                .font(.system(size: 10))
+                                .foregroundColor(routeTextColor(for: train.routeId))
+                                .rotationEffect(.degrees(bearing))
+                                .offset(y: -22)
+                        }
+                    }
                 }
             }
         }
+        .mapStyle(.standard(pointsOfInterest: .including([.publicTransport])))
         .mapControls {
             MapUserLocationButton()
             MapCompass()
@@ -88,7 +116,19 @@ struct MapView: View {
                 StationDetailSheet(
                     station: station,
                     arrivals: viewModel.stationArrivals,
-                    isPresented: $viewModel.isShowingStationDetail
+                    isPresented: $viewModel.isShowingStationDetail,
+                    onTrainTapped: { tripId in
+                        viewModel.isShowingStationDetail = false
+                        viewModel.trackTrain(tripId: tripId)
+                        // Move camera to train position
+                        if let train = viewModel.trackedTrain, let coord = train.coordinate {
+                            camera = .region(.init(
+                                center: coord,
+                                latitudinalMeters: 2000,
+                                longitudinalMeters: 2000
+                            ))
+                        }
+                    }
                 )
             }
         }
@@ -103,11 +143,7 @@ struct MapView: View {
             viewModel.startFeedRefreshLoop()
         }
         .onChange(of: viewModel.locationManager.location) { _, newLocation in
-            autoSelectNearestStation(userLocation: newLocation)
-        }
-        .onChange(of: viewModel.trainPositions.count) { _, _ in
-            // After first feed load, try to select nearest station
-            autoSelectNearestStation(userLocation: viewModel.locationManager.location)
+            centerOnUserLocation(newLocation)
         }
         .onChange(of: routes.count) { _, _ in
             viewModel.buildRouteColorMap(from: routes)
@@ -117,28 +153,39 @@ struct MapView: View {
         }
     }
 
-    // MARK: - Auto-select Nearest Station
+    // MARK: - Helpers
 
-    private func autoSelectNearestStation(userLocation: CLLocation?) {
-        guard !hasAutoSelectedNearest,
-              let userLocation = userLocation,
-              !stations.isEmpty,
-              !viewModel.trainPositions.isEmpty else { return }
-
+    /// Center map on user location when first available
+    private func centerOnUserLocation(_ location: CLLocation?) {
+        guard !hasAutoSelectedNearest, let location else { return }
         hasAutoSelectedNearest = true
-
-        // Center map on user location
         camera = .region(.init(
-            center: userLocation.coordinate,
+            center: location.coordinate,
             latitudinalMeters: 3000,
             longitudinalMeters: 3000
         ))
+    }
 
-        // Select nearest station
-        let nearest = viewModel.nearestStations(from: stations, count: 1)
-        if let station = nearest.first {
-            viewModel.selectStation(station)
+    /// Filter stations to those within a given radius of a center point
+    private func stationsWithinRadius(_ stations: [SubwayStation], center: CLLocationCoordinate2D, radiusMiles: Double) -> [SubwayStation] {
+        let radiusMeters = radiusMiles * 1609.34
+        return stations.filter { $0.distance(to: center) <= radiusMeters }
+    }
+
+    /// Route background color from the color map
+    private func routeColor(for routeId: String) -> Color {
+        if let hex = viewModel.routeColorMap[routeId]?.color {
+            return Color(hex: hex)
         }
+        return .gray
+    }
+
+    /// Route text color from the color map
+    private func routeTextColor(for routeId: String) -> Color {
+        if let hex = viewModel.routeColorMap[routeId]?.textColor {
+            return Color(hex: hex)
+        }
+        return .white
     }
 }
 
