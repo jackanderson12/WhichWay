@@ -9,281 +9,206 @@ import Foundation
 import SwiftProtobuf
 import Zip
 import SwiftData
+import CoreLocation
 
 // MARK: - Error Types
 
-/// Errors that can occur during GTFS data operations
 enum GTFSDataError: Error, LocalizedError {
     case invalidURL
     case downloadFailed
     case extractionFailed
     case processingFailed
-    
+
     var errorDescription: String? {
         switch self {
-        case .invalidURL:
-            return "Invalid GTFS URL"
-        case .downloadFailed:
-            return "Failed to download GTFS data"
-        case .extractionFailed:
-            return "Failed to extract GTFS data"
-        case .processingFailed:
-            return "Failed to process GTFS data"
+        case .invalidURL: return "Invalid GTFS URL"
+        case .downloadFailed: return "Failed to download GTFS data"
+        case .extractionFailed: return "Failed to extract GTFS data"
+        case .processingFailed: return "Failed to process GTFS data"
         }
     }
 }
 
 // MARK: - MTA Service
 
-/**
- * MTAService - Main service class for NYC MTA subway data
- * 
- * This actor handles all interactions with the MTA's GTFS (General Transit Feed Specification) 
- * data feeds, including real-time train positions and static subway system information.
- * 
- * ## Features:
- * - Real-time GTFS-RT feed parsing for live train positions
- * - Weekly base GTFS data synchronization for static system information
- * - Thread-safe operations using Swift's actor model
- * - Automatic error handling and retry logic
- * - Dependency injection for testability
- * 
- * ## Data Sources:
- * - Real-time feed: MTA's GTFS-RT API for A/C/E lines
- * - Static data: NYC subway GTFS archive from AWS S3
- * 
- * ## Usage:
- * The service should be instantiated once and reused throughout the app lifecycle.
- * It automatically manages data freshness and provides up-to-date information to the UI.
- */
 actor MTAService: MTAServiceProtocol {
-    
+
     // MARK: - Properties
-    
-    /// URL session for network requests (injectable for testing)
+
     private let session: URLSessionProtocol
-    
-    /// Path where extracted GTFS data is stored
     private var extractionPath: URL?
-    
-    /// Real-time GTFS-RT feed URL for A/C/E lines
-    /// Contains live train positions, delays, and service alerts
-    private let feedURL = URL(string: "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-ace")!
-    
-    /// Base subway information URL containing static GTFS data
-    /// Updated weekly with station locations, routes, and schedule information
+
+    /// All GTFS-RT feed URLs for NYC subway line groups
+    static let feedURLs: [URL] = [
+        URL(string: "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs")!,        // 1,2,3,4,5,6,7,S
+        URL(string: "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-ace")!,     // A,C,E
+        URL(string: "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-bdfm")!,    // B,D,F,M
+        URL(string: "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-g")!,       // G
+        URL(string: "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-jz")!,      // J,Z
+        URL(string: "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-l")!,       // L
+        URL(string: "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-nqrw")!,    // N,Q,R,W
+        URL(string: "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-si")!,      // SIR
+    ]
+
     private let baseSubwayInfoURL = URL(string: "https://rrgtfsfeeds.s3.amazonaws.com/gtfs_subway.zip")
-    
+
+    /// Cached feeds for arrival lookups without re-fetching
+    private var cachedFeeds: [TransitRealtime_FeedMessage] = []
+
+    /// Maps child stop ID (e.g., "127N") → parent station ID (e.g., "127")
+    private var childToParentMap: [String: String] = [:]
+
+    /// Maps parent station ID → set of route IDs serving it
+    private var stationRouteMap: [String: Set<String>] = [:]
+
+    /// Maps trip ID → route ID (from trips.txt)
+    private var tripRouteMap: [String: String] = [:]
+
+    /// Maps shape ID → route ID (from trips.txt)
+    private var shapeRouteMap: [String: String] = [:]
+
     // MARK: - Initialization
-    
-    /**
-     * Initializes the MTA service with dependency injection
-     * 
-     * ## Parameters:
-     * - session: URL session for network requests (defaults to URLSession.shared)
-     * 
-     * ## Example:
-     * ```swift
-     * // Production usage
-     * let service = MTAService()
-     * 
-     * // Testing usage
-     * let mockSession = MockURLSession()
-     * let service = MTAService(session: mockSession)
-     * ```
-     */
+
     init(session: URLSessionProtocol = URLSession.shared) {
         self.session = session
     }
-    
-    // MARK: - Real-time Data Methods
-    
-    /**
-     * Fetches and decodes the GTFS-RT FeedMessage containing real-time train data
-     * 
-     * This method retrieves the latest real-time information including:
-     * - Vehicle positions with GPS coordinates
-     * - Trip updates with delay information
-     * - Service alerts and disruptions
-     * 
-     * ## Returns:
-     * A `TransitRealtime_FeedMessage` containing all current train positions and updates
-     * 
-     * ## Throws:
-     * - Network errors if the MTA API is unavailable
-     * - Parsing errors if the protobuf data is malformed
-     * - Rate limiting errors if too many requests are made
-     * 
-     * ## Example Usage:
-     * ```swift
-     * let service = MTAService()
-     * do {
-     *     let feed = try await service.fetchFeed()
-     *     print("Received \(feed.entity.count) entities")
-     * } catch {
-     *     print("Error fetching feed: \(error)")
-     * }
-     * ```
-     */
+
+    // MARK: - Real-time Feed Methods
+
     func fetchFeed() async throws -> TransitRealtime_FeedMessage {
-        var req = URLRequest(url: feedURL)
+        let url = Self.feedURLs[0]
+        var req = URLRequest(url: url)
         req.httpMethod = "GET"
         let (data, _) = try await session.data(for: req)
-        
-        // Decode binary protobuf data into generated Swift struct
         return try TransitRealtime_FeedMessage(serializedBytes: data)
     }
-    
+
+    func fetchAllFeeds() async throws -> [TransitRealtime_FeedMessage] {
+        let feeds = try await withThrowingTaskGroup(of: TransitRealtime_FeedMessage?.self, returning: [TransitRealtime_FeedMessage].self) { group in
+            for url in Self.feedURLs {
+                group.addTask { [session] in
+                    do {
+                        var req = URLRequest(url: url)
+                        req.httpMethod = "GET"
+                        let (data, _) = try await session.data(for: req)
+                        return try TransitRealtime_FeedMessage(serializedBytes: data)
+                    } catch {
+                        print("Failed to fetch feed \(url.lastPathComponent): \(error)")
+                        return nil
+                    }
+                }
+            }
+
+            var results: [TransitRealtime_FeedMessage] = []
+            for try await feed in group {
+                if let feed = feed {
+                    results.append(feed)
+                }
+            }
+            return results
+        }
+
+        cachedFeeds = feeds
+        print("Fetched \(feeds.count) feeds with \(feeds.reduce(0) { $0 + $1.entity.count }) total entities")
+        return feeds
+    }
+
+    func getCachedFeeds() -> [TransitRealtime_FeedMessage] {
+        return cachedFeeds
+    }
+
+    func getChildStopIds(for stationId: String) -> [String] {
+        return childToParentMap.compactMap { (childId, parentId) in
+            parentId == stationId ? childId : nil
+        }
+    }
+
+    func getRoutesForStation(_ stationId: String) -> [String] {
+        return Array(stationRouteMap[stationId] ?? [])
+    }
+
+    func getChildToParentMap() -> [String: String] {
+        return childToParentMap
+    }
+
     // MARK: - Static Data Methods
-    
-    /**
-     * Downloads the base subway data ZIP file from AWS S3
-     * 
-     * This method fetches the complete GTFS static data package containing:
-     * - Station locations and names
-     * - Route definitions and colors
-     * - Stop relationships and transfers
-     * - Service schedules and frequencies
-     * 
-     * The data is updated weekly to ensure accuracy with any system changes,
-     * construction updates, or new station openings.
-     * 
-     * ## Throws:
-     * - `GTFSDataError.invalidURL` if the download URL is malformed
-     * - `GTFSDataError.downloadFailed` if the HTTP request fails
-     * - `GTFSDataError.extractionFailed` if ZIP extraction fails
-     * - Network errors for connectivity issues
-     * 
-     * ## Performance Notes:
-     * - The ZIP file is approximately 2-3MB in size
-     * - Download typically takes 1-3 seconds on cellular/WiFi
-     * - Should be called weekly or when user manually refreshes
-     */
+
     func fetchBaseData() async throws {
         guard let url = baseSubwayInfoURL else {
             throw GTFSDataError.invalidURL
         }
-        
+
         let (data, response) = try await session.data(from: url)
-        
+
         guard let httpResponse = response as? HTTPURLResponse,
               httpResponse.statusCode == 200 else {
             throw GTFSDataError.downloadFailed
         }
-        
-        // Create temporary directory for extraction
+
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("gtfs_data")
-        
+
         do {
-            // Clean up any existing temp directory
             try? FileManager.default.removeItem(at: tempDir)
-            
-            // Create fresh temp directory
             try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-            
-            // Save ZIP data to temporary file
+
             let zipPath = tempDir.appendingPathComponent("gtfs.zip")
             try data.write(to: zipPath)
-            
-            // Extract ZIP contents
             try Zip.unzipFile(zipPath, destination: tempDir, overwrite: true, password: nil)
-            
-            // Store the extraction path for decodeBaseData
-            await storeExtractionPath(tempDir)
-            
+
+            extractionPath = tempDir
         } catch {
-            // Clean up temp directory on error
             try? FileManager.default.removeItem(at: tempDir)
             throw GTFSDataError.extractionFailed
         }
     }
-    
-    /**
-     * Stores the path where GTFS data has been extracted
-     * 
-     * ## Parameters:
-     * - path: URL of the directory containing extracted GTFS files
-     */
-    private func storeExtractionPath(_ path: URL) {
-        extractionPath = path
-    }
-    
-    /**
-     * Processes and persists the base subway data to SwiftData
-     * 
-     * This method will:
-     * 1. Parse GTFS CSV files (stops.txt, routes.txt, etc.)
-     * 2. Create/update SwiftData models for stations and routes
-     * 3. Store data persistently for offline use
-     * 
-     * ## Features:
-     * - Comprehensive CSV parsing for all GTFS files
-     * - Validation of data integrity before persistence
-     * - Error recovery for partial update failures
-     * - Support for incremental updates
-     * 
-     * ## Throws:
-     * - `GTFSDataError.processingFailed` if CSV parsing fails
-     * - `GTFSDataError.extractionFailed` if extraction path is not set
-     * - SwiftData errors for persistence issues
-     */
+
     func decodeBaseData(context: ModelContext?) async throws {
         guard let extractionPath = extractionPath else {
             throw GTFSDataError.extractionFailed
         }
-        
+
         do {
-            // Parse stops.txt for station information
+            // Parse stops.txt — builds stations AND child stop mapping
             try await parseStopsFile(at: extractionPath, context: context)
-            
-            // Parse routes.txt for route definitions
+
+            // Parse routes.txt
             try await parseRoutesFile(at: extractionPath, context: context)
-            
-            // Parse agency.txt for agency information
-            try await parseAgencyFile(at: extractionPath, context: context)
-            
-            // Parse calendar.txt for service calendar
-            try await parseCalendarFile(at: extractionPath, context: context)
-            
-            // Parse trips.txt for trip information
+
+            // Parse trips.txt — builds tripId→routeId and shapeId→routeId maps
             try await parseTripsFile(at: extractionPath)
-            
-            // Parse transfers.txt for transfer rules
-            try await parseTransfersFile(at: extractionPath)
-            
-            // Save all changes to SwiftData
+
+            // Parse stop_times.txt — builds stationId→routeIds mapping
+            try await parseStopTimesFile(at: extractionPath)
+
+            // Parse shapes.txt — builds route polylines
+            try await parseShapesFile(at: extractionPath, context: context)
+
+            // Update station models with child stop IDs and route IDs
+            try await updateStationsWithMappings(context: context)
+
             if let context = context {
                 try context.save()
             }
-            
-            // Clean up temporary files after successful processing
+
             try? FileManager.default.removeItem(at: extractionPath)
-            
+
         } catch {
-            // Clean up temp directory on error
             try? FileManager.default.removeItem(at: extractionPath)
             throw GTFSDataError.processingFailed
         }
     }
-    
+
     // MARK: - CSV Parsing Methods
-    
-    /**
-     * Parses stops.txt and creates SubwayStation models
-     * 
-     * ## Parameters:
-     * - path: Directory containing the extracted GTFS files
-     */
+
     private func parseStopsFile(at path: URL, context: ModelContext?) async throws {
         let stopsFile = path.appendingPathComponent("stops.txt")
-        let content = try String(contentsOf: stopsFile)
+        let content = try String(contentsOf: stopsFile, encoding: .utf8)
         let lines = content.components(separatedBy: .newlines).filter { !$0.isEmpty }
-        
+
         guard let headerLine = lines.first else { return }
         let headers = parseCSVRow(headerLine)
-        
-        // Find column indices
+
         guard let stopIdIndex = headers.firstIndex(of: "stop_id"),
               let stopNameIndex = headers.firstIndex(of: "stop_name"),
               let stopLatIndex = headers.firstIndex(of: "stop_lat"),
@@ -291,49 +216,53 @@ actor MTAService: MTAServiceProtocol {
               let locationTypeIndex = headers.firstIndex(of: "location_type") else {
             throw GTFSDataError.processingFailed
         }
-        
-        // Parse data rows
+
+        let parentStationIndex = headers.firstIndex(of: "parent_station")
+
         for line in lines.dropFirst() {
             let values = parseCSVRow(line)
             guard values.count > max(stopIdIndex, stopNameIndex, stopLatIndex, stopLonIndex, locationTypeIndex) else { continue }
-            
-            // Only process stations (location_type = 1), not platforms
-            guard values[locationTypeIndex] == "1" else { continue }
-            
-            guard let latitude = Double(values[stopLatIndex]),
-                  let longitude = Double(values[stopLonIndex]) else { continue }
-            
-            let station = SubwayStation(
-                id: values[stopIdIndex],
-                name: values[stopNameIndex],
-                latitude: latitude,
-                longitude: longitude
-            )
-            
-            // Store in SwiftData context
-            if let context = context {
-                context.insert(station)
+
+            let stopId = values[stopIdIndex]
+            let locationType = values[locationTypeIndex]
+
+            if locationType == "1" {
+                // Parent station
+                guard let latitude = Double(values[stopLatIndex]),
+                      let longitude = Double(values[stopLonIndex]) else { continue }
+
+                let station = SubwayStation(
+                    id: stopId,
+                    name: values[stopNameIndex],
+                    latitude: latitude,
+                    longitude: longitude
+                )
+
+                if let context = context {
+                    context.insert(station)
+                }
+            } else {
+                // Child stop (platform) — map to parent
+                if let parentIdx = parentStationIndex, values.count > parentIdx {
+                    let parentId = values[parentIdx]
+                    if !parentId.isEmpty {
+                        childToParentMap[stopId] = parentId
+                    }
+                }
             }
-            
-            print("Parsed station: \(station.name) at \(station.latitude), \(station.longitude)")
         }
+
+        print("Parsed \(childToParentMap.count) child stop → parent station mappings")
     }
-    
-    /**
-     * Parses routes.txt and creates SubwayRoute models
-     * 
-     * ## Parameters:
-     * - path: Directory containing the extracted GTFS files
-     */
+
     private func parseRoutesFile(at path: URL, context: ModelContext?) async throws {
         let routesFile = path.appendingPathComponent("routes.txt")
-        let content = try String(contentsOf: routesFile)
+        let content = try String(contentsOf: routesFile, encoding: .utf8)
         let lines = content.components(separatedBy: .newlines).filter { !$0.isEmpty }
-        
+
         guard let headerLine = lines.first else { return }
         let headers = parseCSVRow(headerLine)
-        
-        // Find column indices
+
         guard let routeIdIndex = headers.firstIndex(of: "route_id"),
               let agencyIdIndex = headers.firstIndex(of: "agency_id"),
               let routeShortNameIndex = headers.firstIndex(of: "route_short_name"),
@@ -342,19 +271,17 @@ actor MTAService: MTAServiceProtocol {
               let routeUrlIndex = headers.firstIndex(of: "route_url") else {
             throw GTFSDataError.processingFailed
         }
-        
-        // Optional fields
+
         let routeColorIndex = headers.firstIndex(of: "route_color")
         let routeTextColorIndex = headers.firstIndex(of: "route_text_color")
-        
-        // Parse data rows
+
         for line in lines.dropFirst() {
             let values = parseCSVRow(line)
             guard values.count > max(routeIdIndex, agencyIdIndex, routeShortNameIndex, routeLongNameIndex, routeDescIndex, routeUrlIndex) else { continue }
-            
+
             let routeColor = routeColorIndex != nil && values.count > routeColorIndex! ? values[routeColorIndex!] : nil
             let routeTextColor = routeTextColorIndex != nil && values.count > routeTextColorIndex! ? values[routeTextColorIndex!] : nil
-            
+
             let route = SubwayRoute(
                 routeId: values[routeIdIndex],
                 agencyId: values[agencyIdIndex],
@@ -365,141 +292,182 @@ actor MTAService: MTAServiceProtocol {
                 routeColor: routeColor?.isEmpty == false ? routeColor : nil,
                 routeTextColor: routeTextColor?.isEmpty == false ? routeTextColor : nil
             )
-            
-            // Store in SwiftData context
+
             if let context = context {
                 context.insert(route)
             }
-            
-            print("Parsed route: \(route.routeShortName) - \(route.routeLongName)")
         }
     }
-    
-    /**
-     * Parses agency.txt for agency information
-     * 
-     * ## Parameters:
-     * - path: Directory containing the extracted GTFS files
-     */
-    private func parseAgencyFile(at path: URL, context: ModelContext?) async throws {
-        let agencyFile = path.appendingPathComponent("agency.txt")
-        let content = try String(contentsOf: agencyFile)
-        let lines = content.components(separatedBy: .newlines).filter { !$0.isEmpty }
-        
-        guard let headerLine = lines.first else { return }
-        let headers = parseCSVRow(headerLine)
-        
-        // Parse data rows
-        for line in lines.dropFirst() {
-            let values = parseCSVRow(line)
-            print("Parsed agency: \(values.joined(separator: ", "))")
-        }
-    }
-    
-    /**
-     * Parses calendar.txt for service calendar information
-     * 
-     * ## Parameters:
-     * - path: Directory containing the extracted GTFS files
-     */
-    private func parseCalendarFile(at path: URL, context: ModelContext?) async throws {
-        let calendarFile = path.appendingPathComponent("calendar.txt")
-        let content = try String(contentsOf: calendarFile)
-        let lines = content.components(separatedBy: .newlines).filter { !$0.isEmpty }
-        
-        guard let headerLine = lines.first else { return }
-        let headers = parseCSVRow(headerLine)
-        
-        // Parse data rows
-        for line in lines.dropFirst() {
-            let values = parseCSVRow(line)
-            print("Parsed calendar: \(values.joined(separator: ", "))")
-        }
-    }
-    
-    /**
-     * Parses trips.txt for trip information
-     * 
-     * ## Parameters:
-     * - path: Directory containing the extracted GTFS files
-     */
+
     private func parseTripsFile(at path: URL) async throws {
         let tripsFile = path.appendingPathComponent("trips.txt")
-        let content = try String(contentsOf: tripsFile)
+        let content = try String(contentsOf: tripsFile, encoding: .utf8)
         let lines = content.components(separatedBy: .newlines).filter { !$0.isEmpty }
-        
+
         guard let headerLine = lines.first else { return }
         let headers = parseCSVRow(headerLine)
-        
-        // Parse first few data rows for testing
-        for line in lines.dropFirst().prefix(5) {
-            let values = parseCSVRow(line)
-            print("Parsed trip: \(values.joined(separator: ", "))")
+
+        guard let tripIdIndex = headers.firstIndex(of: "trip_id"),
+              let routeIdIndex = headers.firstIndex(of: "route_id") else {
+            return
         }
+
+        let shapeIdIndex = headers.firstIndex(of: "shape_id")
+
+        for line in lines.dropFirst() {
+            let values = parseCSVRow(line)
+            guard values.count > max(tripIdIndex, routeIdIndex) else { continue }
+
+            let tripId = values[tripIdIndex]
+            let routeId = values[routeIdIndex]
+            tripRouteMap[tripId] = routeId
+
+            if let shapeIdx = shapeIdIndex, values.count > shapeIdx {
+                let shapeId = values[shapeIdx]
+                if !shapeId.isEmpty {
+                    shapeRouteMap[shapeId] = routeId
+                }
+            }
+        }
+
+        print("Parsed \(tripRouteMap.count) trip→route mappings")
     }
-    
-    /**
-     * Parses transfers.txt for transfer rules
-     * 
-     * ## Parameters:
-     * - path: Directory containing the extracted GTFS files
-     */
-    private func parseTransfersFile(at path: URL) async throws {
-        let transfersFile = path.appendingPathComponent("transfers.txt")
-        let content = try String(contentsOf: transfersFile)
+
+    private func parseStopTimesFile(at path: URL) async throws {
+        let stopTimesFile = path.appendingPathComponent("stop_times.txt")
+        let content = try String(contentsOf: stopTimesFile, encoding: .utf8)
         let lines = content.components(separatedBy: .newlines).filter { !$0.isEmpty }
-        
+
         guard let headerLine = lines.first else { return }
         let headers = parseCSVRow(headerLine)
-        
-        // Parse first few data rows for testing
-        for line in lines.dropFirst().prefix(5) {
-            let values = parseCSVRow(line)
-            print("Parsed transfer: \(values.joined(separator: ", "))")
+
+        guard let tripIdIndex = headers.firstIndex(of: "trip_id"),
+              let stopIdIndex = headers.firstIndex(of: "stop_id") else {
+            return
         }
+
+        // Track unique (station, route) pairs to avoid redundant work
+        var seenPairs: Set<String> = []
+
+        for line in lines.dropFirst() {
+            let values = parseCSVRow(line)
+            guard values.count > max(tripIdIndex, stopIdIndex) else { continue }
+
+            let tripId = values[tripIdIndex]
+            let stopId = values[stopIdIndex]
+
+            guard let routeId = tripRouteMap[tripId] else { continue }
+
+            // Resolve to parent station
+            let parentStationId = childToParentMap[stopId] ?? stopId
+
+            let pairKey = "\(parentStationId):\(routeId)"
+            guard !seenPairs.contains(pairKey) else { continue }
+            seenPairs.insert(pairKey)
+
+            stationRouteMap[parentStationId, default: []].insert(routeId)
+        }
+
+        print("Parsed station→route mappings for \(stationRouteMap.count) stations")
     }
-    
-    /**
-     * Parses a CSV row into individual values
-     * 
-     * ## Parameters:
-     * - row: CSV row string
-     * 
-     * ## Returns:
-     * Array of string values
-     */
+
+    private func parseShapesFile(at path: URL, context: ModelContext?) async throws {
+        let shapesFile = path.appendingPathComponent("shapes.txt")
+        guard FileManager.default.fileExists(atPath: shapesFile.path) else { return }
+
+        let content = try String(contentsOf: shapesFile, encoding: .utf8)
+        let lines = content.components(separatedBy: .newlines).filter { !$0.isEmpty }
+
+        guard let headerLine = lines.first else { return }
+        let headers = parseCSVRow(headerLine)
+
+        guard let shapeIdIndex = headers.firstIndex(of: "shape_id"),
+              let latIndex = headers.firstIndex(of: "shape_pt_lat"),
+              let lonIndex = headers.firstIndex(of: "shape_pt_lon"),
+              let seqIndex = headers.firstIndex(of: "shape_pt_sequence") else {
+            return
+        }
+
+        // Group coordinates by shape ID, preserving sequence order
+        var shapePoints: [String: [(seq: Int, lat: Double, lon: Double)]] = [:]
+
+        for line in lines.dropFirst() {
+            let values = parseCSVRow(line)
+            guard values.count > max(shapeIdIndex, latIndex, lonIndex, seqIndex) else { continue }
+
+            guard let lat = Double(values[latIndex]),
+                  let lon = Double(values[lonIndex]),
+                  let seq = Int(values[seqIndex]) else { continue }
+
+            let shapeId = values[shapeIdIndex]
+            shapePoints[shapeId, default: []].append((seq: seq, lat: lat, lon: lon))
+        }
+
+        // Deduplicate: only keep one shape per route (the first one encountered)
+        var routeShapesSeen: Set<String> = []
+
+        for (shapeId, points) in shapePoints {
+            guard let routeId = shapeRouteMap[shapeId] else { continue }
+            guard !routeShapesSeen.contains(routeId) else { continue }
+            routeShapesSeen.insert(routeId)
+
+            let sorted = points.sorted { $0.seq < $1.seq }
+            let coordinates = sorted.map {
+                CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon)
+            }
+
+            let polyline = SubwayRoutePolyline(routeId: routeId, coordinates: coordinates)
+            if let context = context {
+                context.insert(polyline)
+            }
+        }
+
+        print("Parsed \(routeShapesSeen.count) route polylines from shapes.txt")
+    }
+
+    private func updateStationsWithMappings(context: ModelContext?) async throws {
+        guard let context = context else { return }
+
+        let descriptor = FetchDescriptor<SubwayStation>()
+        let stations = try context.fetch(descriptor)
+
+        for station in stations {
+            station.childStopIds = getChildStopIds(for: station.id)
+            station.routeIds = Array(stationRouteMap[station.id] ?? []).sorted()
+        }
+
+        print("Updated \(stations.count) stations with child stop IDs and route mappings")
+    }
+
+    // MARK: - CSV Parser
+
     private func parseCSVRow(_ row: String) -> [String] {
         var values: [String] = []
         var currentValue = ""
         var inQuotes = false
         var i = row.startIndex
-        
+
         while i < row.endIndex {
             let char = row[i]
-            
+
             if char == "\"" {
                 if inQuotes && i < row.index(before: row.endIndex) && row[row.index(after: i)] == "\"" {
-                    // Escaped quote
                     currentValue += "\""
                     i = row.index(after: i)
                 } else {
-                    // Start or end of quoted field
                     inQuotes.toggle()
                 }
             } else if char == "," && !inQuotes {
-                // End of field
                 values.append(currentValue.trimmingCharacters(in: .whitespacesAndNewlines))
                 currentValue = ""
             } else {
                 currentValue += String(char)
             }
-            
+
             i = row.index(after: i)
         }
-        
-        // Add the last field
+
         values.append(currentValue.trimmingCharacters(in: .whitespacesAndNewlines))
-        
         return values
     }
 }

@@ -198,7 +198,7 @@ struct MTAServiceTests {
         
         // Currently a placeholder - should not throw
         do {
-            try await service.decodeBaseData()
+            try await service.decodeBaseData(context: nil)
             #expect(true)
         } catch {
             Issue.record("Placeholder implementation should not throw: \(error)")
