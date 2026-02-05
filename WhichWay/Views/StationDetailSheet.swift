@@ -7,96 +7,64 @@
 
 import SwiftUI
 
-// MARK: - Station Detail Sheet
-
-/**
- * StationDetailSheet - Half sheet view displaying station information
- * 
- * This view presents detailed information about a subway station,
- * including the lines that serve it, organized by direction.
- * 
- * ## Features:
- * - Station name and location
- * - Lines categorized by direction (Uptown/Downtown)
- * - Route badges with official MTA colors
- * - Smooth animations and transitions
- * - Native iOS half sheet presentation
- * 
- * ## Usage:
- * Presented as a sheet when a station annotation is tapped on the map.
- * Uses SwiftUI's native sheet presentation with detents for half-screen display.
- */
 struct StationDetailSheet: View {
-    
-    // MARK: - Properties
-    
-    let serviceInfo: StationServiceInfo
+    let station: SubwayStation
+    let arrivals: [StationArrival]
     @Binding var isPresented: Bool
-    
-    // MARK: - View Body
-    
+
+    private var uptownArrivals: [StationArrival] {
+        arrivals.filter { $0.direction == "N" }
+    }
+
+    private var downtownArrivals: [StationArrival] {
+        arrivals.filter { $0.direction == "S" }
+    }
+
     var body: some View {
         NavigationView {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    
-                    // MARK: - Station Header
-                    
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(serviceInfo.station.name)
-                            .font(.title2)
-                            .fontWeight(.bold)
-                            .foregroundColor(.primary)
-                        
-                        Text("\(serviceInfo.totalLines) line\(serviceInfo.totalLines == 1 ? "" : "s") serving this station")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    
-                    // MARK: - Uptown/Bronx Lines
-                    
-                    if serviceInfo.hasUptownService {
-                        LineDirectionSection(
-                            direction: .uptown,
-                            lines: serviceInfo.uptownLines
-                        )
-                    }
-                    
-                    // MARK: - Downtown/Brooklyn Lines
-                    
-                    if serviceInfo.hasDowntownService {
-                        LineDirectionSection(
-                            direction: .downtown,
-                            lines: serviceInfo.downtownLines
-                        )
-                    }
-                    
-                    // MARK: - Station Information
-                    
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack {
-                            Image(systemName: "location.circle.fill")
-                                .foregroundColor(.blue)
-                            Text("Station Location")
-                                .font(.headline)
-                                .foregroundColor(.primary)
+            TimelineView(.periodic(from: .now, by: 15)) { _ in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        // Station header
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(station.name)
+                                .font(.title2)
+                                .fontWeight(.bold)
+
+                            if !station.routeIds.isEmpty {
+                                routeBadgeRow
+                            }
+
+                            if arrivals.isEmpty {
+                                noArrivalsView
+                            }
                         }
-                        
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Latitude: \(serviceInfo.station.latitude, specifier: "%.6f")")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            Text("Longitude: \(serviceInfo.station.longitude, specifier: "%.6f")")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                        // Uptown arrivals
+                        if !uptownArrivals.isEmpty {
+                            arrivalSection(
+                                title: "Uptown/Bronx",
+                                icon: "arrow.up.circle.fill",
+                                color: .blue,
+                                arrivals: uptownArrivals
+                            )
                         }
+
+                        // Downtown arrivals
+                        if !downtownArrivals.isEmpty {
+                            arrivalSection(
+                                title: "Downtown/Brooklyn",
+                                icon: "arrow.down.circle.fill",
+                                color: .green,
+                                arrivals: downtownArrivals
+                            )
+                        }
+
+                        Spacer(minLength: 50)
                     }
-                    .padding(.top, 20)
-                    
-                    Spacer(minLength: 50)
+                    .padding()
                 }
-                .padding()
             }
             .navigationTitle("Station Details")
             .navigationBarTitleDisplayMode(.inline)
@@ -111,87 +79,112 @@ struct StationDetailSheet: View {
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
     }
-}
 
-// MARK: - Preview
+    // MARK: - Components
+
+    private var routeBadgeRow: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                ForEach(station.routeIds.sorted(), id: \.self) { routeId in
+                    Text(routeId)
+                        .font(.caption)
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                        .frame(width: 22, height: 22)
+                        .background(Circle().fill(Color.gray))
+                }
+            }
+        }
+    }
+
+    private var noArrivalsView: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "clock.badge.questionmark")
+                .font(.title)
+                .foregroundColor(.secondary)
+            Text("No upcoming arrivals")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 20)
+    }
+
+    private func arrivalSection(title: String, icon: String, color: Color, arrivals: [StationArrival]) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: icon)
+                    .foregroundColor(color)
+                    .font(.title3)
+                Text(title)
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                Spacer()
+                Text("\(arrivals.count) train\(arrivals.count == 1 ? "" : "s")")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            let grouped = Dictionary(grouping: arrivals) { $0.routeId }
+            let sortedRoutes = grouped.keys.sorted()
+
+            ForEach(sortedRoutes, id: \.self) { routeId in
+                if let routeArrivals = grouped[routeId] {
+                    ForEach(routeArrivals.prefix(3)) { arrival in
+                        ArrivalRow(arrival: arrival)
+                    }
+                }
+            }
+        }
+        .padding(.vertical, 8)
+    }
+}
 
 #Preview {
     StationDetailSheet(
-        serviceInfo: StationServiceInfo(
-            station: SubwayStation(
-                id: "127",
-                name: "Times Sq-42 St",
-                latitude: 40.755477,
-                longitude: -73.987691
-            ),
-            uptownLines: [
-                StationLine(
-                    routeId: "1",
-                    routeName: "1",
-                    routeColor: "EE352E",
-                    routeTextColor: "FFFFFF",
-                    direction: .uptown,
-                    longName: "Broadway - 7 Avenue Local",
-                    description: "Local service"
-                ),
-                StationLine(
-                    routeId: "2",
-                    routeName: "2",
-                    routeColor: "EE352E",
-                    routeTextColor: "FFFFFF",
-                    direction: .uptown,
-                    longName: "7 Avenue Express",
-                    description: "Express service"
-                ),
-                StationLine(
-                    routeId: "3",
-                    routeName: "3",
-                    routeColor: "EE352E",
-                    routeTextColor: "FFFFFF",
-                    direction: .uptown,
-                    longName: "7 Avenue Express",
-                    description: "Express service"
-                )
-            ],
-            downtownLines: [
-                StationLine(
-                    routeId: "N",
-                    routeName: "N",
-                    routeColor: "FCCC0A",
-                    routeTextColor: "000000",
-                    direction: .downtown,
-                    longName: "Broadway Local",
-                    description: "Local service"
-                ),
-                StationLine(
-                    routeId: "Q",
-                    routeName: "Q",
-                    routeColor: "FCCC0A",
-                    routeTextColor: "000000",
-                    direction: .downtown,
-                    longName: "Broadway Express",
-                    description: "Express service"
-                ),
-                StationLine(
-                    routeId: "R",
-                    routeName: "R",
-                    routeColor: "FCCC0A",
-                    routeTextColor: "000000",
-                    direction: .downtown,
-                    longName: "Broadway Local",
-                    description: "Local service"
-                ),
-                StationLine(
-                    routeId: "W",
-                    routeName: "W",
-                    routeColor: "FCCC0A",
-                    routeTextColor: "000000",
-                    direction: .downtown,
-                    longName: "Broadway Local",
-                    description: "Weekday service"
-                )
-            ]
+        station: SubwayStation(
+            id: "127",
+            name: "Times Sq-42 St",
+            latitude: 40.755477,
+            longitude: -73.987691,
+            childStopIds: ["127N", "127S"],
+            routeIds: ["1", "2", "3", "7", "N", "Q", "R", "W", "S"]
         ),
+        arrivals: [
+            StationArrival(
+                id: "trip1_127N",
+                routeId: "1",
+                routeShortName: "1",
+                routeColor: "EE352E",
+                routeTextColor: "FFFFFF",
+                direction: "N",
+                directionLabel: "Uptown/Bronx",
+                arrivalTime: Date().addingTimeInterval(120),
+                tripId: "trip1"
+            ),
+            StationArrival(
+                id: "trip2_127N",
+                routeId: "2",
+                routeShortName: "2",
+                routeColor: "EE352E",
+                routeTextColor: "FFFFFF",
+                direction: "N",
+                directionLabel: "Uptown/Bronx",
+                arrivalTime: Date().addingTimeInterval(300),
+                tripId: "trip2"
+            ),
+            StationArrival(
+                id: "trip3_127S",
+                routeId: "N",
+                routeShortName: "N",
+                routeColor: "FCCC0A",
+                routeTextColor: "000000",
+                direction: "S",
+                directionLabel: "Downtown/Brooklyn",
+                arrivalTime: Date().addingTimeInterval(60),
+                tripId: "trip3"
+            ),
+        ],
         isPresented: .constant(true)
     )
 }

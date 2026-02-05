@@ -9,313 +9,138 @@ import SwiftUI
 import MapKit
 import SwiftData
 
-// MARK: - Map View
-
-/**
- * MapView - Main SwiftUI view for displaying the NYC subway system
- * 
- * This view provides an interactive map interface showing subway stations,
- * train positions, and route information. It integrates with SwiftData for
- * persistent storage and uses MapKit for map rendering.
- * 
- * ## Features:
- * - Interactive map centered on NYC
- * - Real-time search and filtering of subway stations
- * - Real-time train position markers
- * - Subway station markers with names
- * - Responsive camera positioning
- * - SwiftData integration for offline capability
- * 
- * ## Architecture:
- * - Follows SwiftUI declarative pattern
- * - Uses MVVM architecture with MapViewModel
- * - Integrates SwiftData for persistent storage
- * - Leverages MapKit for map rendering and interactions
- * 
- * ## Data Sources:
- * - Stations: SwiftData persistent storage (@Query)
- * - Train positions: Real-time via MapViewModel
- * - Map tiles: Apple Maps/MapKit
- * 
- * ## Performance Considerations:
- * - Stations loaded once from SwiftData
- * - Train positions updated periodically
- * - Map rendering optimized by MapKit
- * - Efficient marker updates using SwiftUI's diffing
- */
 struct MapView: View {
-    
-    // MARK: - SwiftData Integration
-    
-    /// SwiftData model context for database operations
+
+    // MARK: - SwiftData
+
     @Environment(\.modelContext) var context
-    
-    /// Persistent subway stations loaded from SwiftData
-    /// Updated automatically when database changes
     @Query private var stations: [SubwayStation]
-    
-    // MARK: - View Model and State
-    
-    /// View model managing real-time train data and MTA service interactions
-    @StateObject private var viewModel: MapViewModel
-    
-    /// Local state for train positions (updated from view model)
-    @State private var trains: [TrainPosition] = []
-    
-    /// State for station detail sheet presentation
-    @State private var selectedStation: SubwayStation?
-    @State private var showingStationDetail = false
-    
-    /// Station service information for detail sheet
-    @State private var stationServiceInfo: StationServiceInfo?
-    
-    /// Camera position for map display
-    /// Centered on Manhattan with appropriate zoom level for subway visibility
+    @Query private var routes: [SubwayRoute]
+    @Query private var polylines: [SubwayRoutePolyline]
+
+    // MARK: - State
+
+    @State private var viewModel = DependencyContainer.shared.makeMapViewModel()
     @State private var camera: MapCameraPosition = .region(
         .init(
-            center: .init(latitude: 40.7831, longitude: -73.9712), // Times Square area
-            latitudinalMeters: 12500,  // ~7.8 miles vertical span
-            longitudinalMeters: 12500  // ~7.8 miles horizontal span
+            center: .init(latitude: 40.7831, longitude: -73.9712),
+            latitudinalMeters: 12500,
+            longitudinalMeters: 12500
         )
     )
-    
-    /// Search text for filtering subway stations by name
-    /// Updated in real-time by SearchBarView overlay
     @State private var searchText = ""
-    
-    // MARK: - Initialization
-    
-    /**
-     * Initializes the MapView with dependency injection
-     * 
-     * Creates a view model using the dependency container to ensure
-     * proper service injection and testability.
-     */
-    init() {
-        // Create view model using dependency container
-        // Note: This is a temporary approach - in SwiftUI, we'd typically use
-        // a factory pattern or pass the view model from the parent
-        self._viewModel = StateObject(wrappedValue: DependencyContainer.shared.makeMapViewModel())
-    }
-    
-    // MARK: - Computed Properties
-    
-    /**
-     * Filtered stations based on current search text
-     * 
-     * Returns a subset of all stations that match the search criteria.
-     * When search text is empty, returns all stations for full map display.
-     * 
-     * ## Filtering Logic:
-     * - Case-insensitive partial matching on station names
-     * - Real-time updates as user types in SearchBarView
-     * - Empty search shows all stations
-     * - Optimized for responsive user experience
-     * 
-     * ## Returns:
-     * Array of SubwayStation objects matching search criteria
-     */
+    @State private var hasAutoSelectedNearest = false
+
+    // MARK: - Computed
+
     private var filteredStations: [SubwayStation] {
         SearchBarView.filteredStations(stations, searchText: searchText)
     }
-    
-    // MARK: - View Body
-    
-    /**
-     * Main view body rendering the interactive map with search overlay
-     * 
-     * Creates a MapKit map with:
-     * - Filtered subway station markers from SwiftData
-     * - Train position markers from real-time data
-     * - Interactive camera controls
-     * - SearchBarView overlay for station filtering
-     * - Full-screen display ignoring safe areas
-     * 
-     * ## Map Elements:
-     * - Station markers: Tram icons with filtered station names
-     * - Search overlay: Real-time station filtering interface
-     * - Train markers: (TODO) Dynamic train icons with route colors
-     * - Route polylines: (TODO) Visual route paths
-     * 
-     * ## User Interactions:
-     * - Real-time search and filtering of visible stations
-     * - Pan and zoom gestures
-     * - Tap to select stations/trains
-     * - Pinch to zoom in/out
-     * - Standard MapKit gesture recognition
-     */
+
+    // MARK: - Body
+
     var body: some View {
-        Map(initialPosition: camera) {
-            
-            // MARK: - Station Markers
-            
-            // Display filtered subway stations from SwiftData with interactive overlays
+        Map(position: $camera) {
+            // User location
+            UserAnnotation()
+
+            // Station markers
             ForEach(filteredStations) { station in
                 Annotation(
                     station.name,
                     coordinate: station.coordinate
                 ) {
-                    Button(action: {
-                        selectedStation = station
-                        loadStationServiceInfo(for: station)
-                        showingStationDetail = true
-                    }) {
+                    Button {
+                        viewModel.selectStation(station)
+                    } label: {
                         Image(systemName: "tram.circle.fill")
                             .font(.title2)
                             .foregroundColor(.blue)
                             .background(Color.white)
                             .clipShape(Circle())
-                            .overlay(
-                                Circle()
-                                    .stroke(Color.blue, lineWidth: 2)
-                            )
+                            .overlay(Circle().stroke(Color.blue, lineWidth: 2))
                     }
                     .buttonStyle(PlainButtonStyle())
                 }
             }
-            
-            // TODO: Add train position markers
-            // ForEach(trains) { train in
-            //     Marker(
-            //         train.displayName,
-            //         systemImage: "train.side.front.car",
-            //         coordinate: train.coordinate
-            //     )
-            // }
-            
-            // TODO: Add route polylines
-            // ForEach(routes) { route in
-            //     MapPolyline(route.polyline)
-            //         .stroke(route.color, lineWidth: 3)
-            // }
+
+            // Route polylines
+            ForEach(polylines) { polyline in
+                if let route = routes.first(where: { $0.routeId == polyline.routeId }) {
+                    MapPolyline(coordinates: polyline.coordinates)
+                        .stroke(route.backgroundSwiftUIColor, lineWidth: 3)
+                }
+            }
         }
-        .ignoresSafeArea(.all) // Complete full-screen map display
-        .edgesIgnoringSafeArea(.all) // Additional safe area ignoring for older iOS versions
-        .frame(maxWidth: .infinity, maxHeight: .infinity) // Ensure full width and height
-        .clipped() // Clip any content that might extend beyond bounds
+        .mapControls {
+            MapUserLocationButton()
+            MapCompass()
+            MapScaleView()
+        }
+        .ignoresSafeArea(.all)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .overlay(
-            // MARK: - Search Bar Overlay
-            
-            // SearchBarView positioned on top of the map for station filtering
             SearchBarView(searchText: $searchText)
-                .allowsHitTesting(true) // Ensure search bar receives touch events
+                .allowsHitTesting(true)
         )
-        .sheet(isPresented: $showingStationDetail) {
-            if let serviceInfo = stationServiceInfo {
+        .sheet(isPresented: $viewModel.isShowingStationDetail) {
+            if let station = viewModel.selectedStation {
                 StationDetailSheet(
-                    serviceInfo: serviceInfo,
-                    isPresented: $showingStationDetail
+                    station: station,
+                    arrivals: viewModel.stationArrivals,
+                    isPresented: $viewModel.isShowingStationDetail
                 )
             }
         }
         .task {
-            // Update local train state when view model changes
-            trains = viewModel.trainPositions
+            // Build route color map from SwiftData routes
+            viewModel.buildRouteColorMap(from: routes)
+
+            // Request location permission
+            viewModel.requestLocationPermission()
+
+            // Start fetching all feeds
+            viewModel.startFeedRefreshLoop()
+        }
+        .onChange(of: viewModel.locationManager.location) { _, newLocation in
+            autoSelectNearestStation(userLocation: newLocation)
+        }
+        .onChange(of: viewModel.trainPositions.count) { _, _ in
+            // After first feed load, try to select nearest station
+            autoSelectNearestStation(userLocation: viewModel.locationManager.location)
+        }
+        .onChange(of: routes.count) { _, _ in
+            viewModel.buildRouteColorMap(from: routes)
+        }
+        .onDisappear {
+            viewModel.stopRefresh()
         }
     }
-    
-    // MARK: - Helper Methods
-    
-    /**
-     * Loads station service information for the detail sheet
-     * 
-     * This method queries the SwiftData context for route information
-     * and builds the service info using the StationServiceBuilder.
-     */
-    private func loadStationServiceInfo(for station: SubwayStation) {
-        // TODO: Load routes from SwiftData context
-        // For now, we'll use sample data
-        let sampleRoutes = createSampleRoutes()
-        
-        stationServiceInfo = StationServiceBuilder.buildServiceInfo(
-            for: station,
-            routes: sampleRoutes
-        )
-    }
-    
-    /**
-     * Creates sample routes for demonstration
-     * 
-     * In a full implementation, this would load from SwiftData
-     */
-    private func createSampleRoutes() -> [SubwayRoute] {
-        return [
-            SubwayRoute(
-                routeId: "1",
-                routeShortName: "1",
-                routeLongName: "Broadway - 7 Avenue Local",
-                routeDescription: "Local service",
-                routeColor: "EE352E",
-                routeTextColor: "FFFFFF"
-            ),
-            SubwayRoute(
-                routeId: "2",
-                routeShortName: "2",
-                routeLongName: "7 Avenue Express",
-                routeDescription: "Express service",
-                routeColor: "EE352E",
-                routeTextColor: "FFFFFF"
-            ),
-            SubwayRoute(
-                routeId: "4",
-                routeShortName: "4",
-                routeLongName: "Lexington Avenue Express",
-                routeDescription: "Express service",
-                routeColor: "00933C",
-                routeTextColor: "FFFFFF"
-            ),
-            SubwayRoute(
-                routeId: "5",
-                routeShortName: "5",
-                routeLongName: "Lexington Avenue Express",
-                routeDescription: "Express service",
-                routeColor: "00933C",
-                routeTextColor: "FFFFFF"
-            ),
-            SubwayRoute(
-                routeId: "6",
-                routeShortName: "6",
-                routeLongName: "Lexington Avenue Local",
-                routeDescription: "Local service",
-                routeColor: "00933C",
-                routeTextColor: "FFFFFF"
-            ),
-            SubwayRoute(
-                routeId: "N",
-                routeShortName: "N",
-                routeLongName: "Broadway Local",
-                routeDescription: "Local service",
-                routeColor: "FCCC0A",
-                routeTextColor: "000000"
-            ),
-            SubwayRoute(
-                routeId: "Q",
-                routeShortName: "Q",
-                routeLongName: "Broadway Express",
-                routeDescription: "Express service",
-                routeColor: "FCCC0A",
-                routeTextColor: "000000"
-            ),
-            SubwayRoute(
-                routeId: "R",
-                routeShortName: "R",
-                routeLongName: "Broadway Local",
-                routeDescription: "Local service",
-                routeColor: "FCCC0A",
-                routeTextColor: "000000"
-            ),
-            SubwayRoute(
-                routeId: "W",
-                routeShortName: "W",
-                routeLongName: "Broadway Local",
-                routeDescription: "Weekday service",
-                routeColor: "FCCC0A",
-                routeTextColor: "000000"
-            )
-        ]
+
+    // MARK: - Auto-select Nearest Station
+
+    private func autoSelectNearestStation(userLocation: CLLocation?) {
+        guard !hasAutoSelectedNearest,
+              let userLocation = userLocation,
+              !stations.isEmpty,
+              !viewModel.trainPositions.isEmpty else { return }
+
+        hasAutoSelectedNearest = true
+
+        // Center map on user location
+        camera = .region(.init(
+            center: userLocation.coordinate,
+            latitudinalMeters: 3000,
+            longitudinalMeters: 3000
+        ))
+
+        // Select nearest station
+        let nearest = viewModel.nearestStations(from: stations, count: 1)
+        if let station = nearest.first {
+            viewModel.selectStation(station)
+        }
     }
 }
-
 
 #Preview {
     MapView()

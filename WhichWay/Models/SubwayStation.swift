@@ -57,36 +57,25 @@ final class SubwayStation: Identifiable, Equatable {
     /// Range: Approximately 40.4 to 40.9 for NYC area
     var latitude: Double
     
-    /// Station longitude in decimal degrees  
+    /// Station longitude in decimal degrees
     /// Range: Approximately -74.3 to -73.7 for NYC area
     var longitude: Double
-    
+
+    /// Platform-level stop IDs (e.g., "127N", "127S") that belong to this parent station
+    var childStopIds: [String]
+
+    /// Route IDs that serve this station (e.g., ["1", "2", "3"])
+    var routeIds: [String]
+
     // MARK: - Initialization
-    
-    /**
-     * Creates a new subway station instance
-     * 
-     * ## Parameters:
-     * - id: Unique identifier from GTFS stops.txt
-     * - name: Display name for the station
-     * - latitude: GPS latitude coordinate
-     * - longitude: GPS longitude coordinate
-     * 
-     * ## Example:
-     * ```swift
-     * let station = SubwayStation(
-     *     id: "101",
-     *     name: "Times Sq-42 St",
-     *     latitude: 40.755477,
-     *     longitude: -73.987691
-     * )
-     * ```
-     */
-    init(id: String, name: String, latitude: Double, longitude: Double) {
+
+    init(id: String, name: String, latitude: Double, longitude: Double, childStopIds: [String] = [], routeIds: [String] = []) {
         self.id = id
         self.name = name
         self.latitude = latitude
         self.longitude = longitude
+        self.childStopIds = childStopIds
+        self.routeIds = routeIds
     }
     
     // MARK: - Equatable Conformance
